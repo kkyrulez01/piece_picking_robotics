@@ -1,0 +1,46 @@
+# Streams
+enable_color: true
+rgb_camera.color_profile: 1280x720x30
+
+enable_depth: true
+depth_module.depth_profile: 1280x720x30
+
+# RGBD output
+enable_sync: true
+enable_rgbd: true
+align_depth.enable: true
+
+# =========================
+# Depth acquisition
+# =========================
+
+# Fixed exposure for repeatable background subtraction
+depth_module.enable_auto_exposure: false
+depth_module.exposure: 6000
+depth_module.gain: 16
+
+# Leave HDR disabled
+depth_module.hdr_enabled: false
+hdr_merge.enable: false
+
+# =========================
+# Depth filtering
+# =========================
+
+# These two we currently WANT enabled
+spatial_filter.enable: true
+temporal_filter.enable: true
+
+# Keep these disabled
+decimation_filter.enable: false
+hole_filling_filter.enable: false
+disparity_filter.enable: false
+colorizer.enable: false
+
+# =========================
+# RGB acquisition
+# =========================
+
+rgb_camera.enable_auto_exposure: false
+rgb_camera.exposure: 1000
+rgb_camera.gain: 64

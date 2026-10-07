@@ -1,0 +1,10 @@
+helios2_capture:
+  # Leave null to use first detected LUCID camera
+  serial: null
+
+  # Helios2 point-cloud exposure
+  exposure: "Exp250Us"
+  output_root: "/home/support/unseen_sku_ws/data/helios2"
+
+  # Save ROS2 Capture as NPZ for debugging
+  save_debug: true

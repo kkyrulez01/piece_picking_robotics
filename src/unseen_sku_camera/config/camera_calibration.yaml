@@ -1,0 +1,20 @@
+camera_calibration:
+
+  # This must be the robot/world frame used when the
+  # hand-eye calibration was performed.
+  robot_frame: "robot_base"
+
+  helios2:
+    frame_id: "helios2_optical_frame"
+    calibration_file: "helios2_260922.npz"
+
+  realsense:
+    frame_id: "camera_color_optical_frame"
+    calibration_file: "realsense_D455f_260922.npz"
+
+  validation:
+    enabled: true
+
+    # Used only to verify that the two camera->robot
+    # calibrations reproduce the known direct transform.
+    helios_to_realsense_file: "helios_to_realsense_260922.npz"

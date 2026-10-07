@@ -1,0 +1,89 @@
+input:
+  cloud_path: /home/support/unseen_sku_ws/outputs/test_0037.npz
+camera:
+  position_m: [0.0, 0.0, 0.0]
+
+preprocessing:
+  voxel_size_cm: 0.2
+
+  normal_radius_cm: 1.5
+  maximum_normal_neighbours: 30
+
+  # Sim-Suction requires exactly 5120 points
+  target_count: 5120
+
+  minimum_z_m: 0.0
+  random_seed: 42
+
+model:
+  repository_path: /home/support/unseen_sku_ws/external/Sim-Suction-API
+  checkpoint_path: /home/support/unseen_sku_ws/external/Sim-Suction-API/Sim-Suction-Pointnet/models/MV_PCL_1550_500.model
+
+  device: cuda
+
+masks:
+  root_directory: /home/support/unseen_sku_ws/outputs
+
+candidates:
+  minimum_score: 0.0
+  # maximum_candidates_per_object: 100
+  nms_distance_m: 0.02
+  maximum_nms_candidates: 10
+  maximum_final_candidates: 5
+
+geometric_filters:
+  boundary:
+    enabled: true
+    exponent: 2.0
+  
+  surface_geometry:
+    enabled: true
+
+    neighbourhood_radius_m: 0.015
+    minimum_neighbours: 20
+
+    maximum_surface_variation: 0.02
+    exponent: 1.0
+
+    missing_quality: 0.5
+  
+  footprint:
+    enabled: true
+    
+    # CHANGE THIS to the actual suction cup radius
+    cup_radius_m: 0.010
+
+    grid_resolution_m: 0.002
+    maximum_surface_deviation_m: 0.003
+
+  clearance:
+    enabled: true
+
+    # Approximate rigid tool/cup-body radius
+    # Replace this with the real physical dimension
+    tool_radius_m: 0.010
+    # How far above the candidate to inspect
+    approach_height_m: 0.060
+    # Ignore geometry immediately around contact surface
+    minimum_clearance_height_m: 0.008
+    # Additional radial collision margin
+    safety_margin_m: 0.003
+    # Keep false initially so we can inspect results
+    reject_collisions: false
+
+ranking:
+  sim_normalization:
+    lower_percentile: 5.0
+    upper_percentile: 95.0
+  
+  final:
+    sim_suction_weight: 0.30
+    boundary_weight: 0.20
+    surface_geometry_weight: 0.20
+    # normal_consistency_weight: 0.15
+    footprint_weight: 0.30
+
+output:
+  directory: /home/support/unseen_sku_ws/outputs
+  overwrite: true
+  visualize: false

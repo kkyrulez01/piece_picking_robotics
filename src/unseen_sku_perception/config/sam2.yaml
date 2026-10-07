@@ -1,0 +1,66 @@
+inputs:
+  background: /home/support/unseen_sku_ws/data/realsense/background/depth_images/background_box.tiff
+
+outputs:
+  output_directory: /home/support/unseen_sku_ws/outputs
+  log_images: true
+  
+foreground:
+  threshold: 0.010 # metres
+  minimum_area: 300
+
+rgb_prompt:
+  spacing: 16
+  margin: 12 # Pixels from ROI boundary
+
+  maximum_mask_area_ratio: 0.60
+
+depth_filter:
+  # Pixel must be at least this far above the empty workbench
+  # to count as physically elevated.
+  object_height_threshold: 0.010 # In metres
+
+  # At least 30% of valid interior pixels must be elevated.
+  minimum_elevated_ratio: 0.30
+
+  # Reject masks where most pixels have no usable depth.
+  minimum_valid_depth_ratio: 0.50
+
+  # Ignore SAM2/depth disagreement around mask edges.
+  erosion_size: 5
+
+  minimum_prompt_elevated_ratio: 0.50
+  prompt_radius: 3
+  minimum_prompt_valid_pixels: 5
+
+sam2:
+  checkpoint: /home/support/unseen_sku_ws/external/sam2/checkpoints/sam2.1_hiera_tiny.pt
+  model_config: configs/sam2.1/sam2.1_hiera_t.yaml
+  points_per_batch: 16
+  predicted_iou_threshold: 0.6
+  stability_threshold: 0.75
+
+  # Keep at zero because SAM2 was installed using SAM2_BUILD_CUDA=0.
+  minimum_region_area: 0
+
+mask_filtering:
+  minimum_mask_area: 500
+  minimum_foreground_ratio: 0.60 # 0.60
+  minimum_valid_depth_ratio: 0.70 # 0.70
+  duplicate_iou_threshold: 0.60
+
+roi:
+  enabled: true
+  x_min: 520 # Mechmind: 530, Realsense: 520
+  x_max: 700 # Mechmind: 1350, Realsense: 700
+  y_min: 185 # Mechmind: 0, Realsense: 185
+  y_max: 465 # Mechmind: 1000, Realsense: 465
+
+containment:
+  enabled: true
+  containment_threshold: 0.80 # Lower -> More aggressive
+  maximum_area_ratio: 0.80
+  minimum_child_area_ratio: 0.30
+  maximum_child_iou: 0.30
+  minimum_height_difference: 0.010
+  minimum_valid_pixels: 20
