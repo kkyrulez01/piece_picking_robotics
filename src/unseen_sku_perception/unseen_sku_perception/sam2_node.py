@@ -20,7 +20,7 @@ from realsense2_camera_msgs.msg import RGBD
 from std_srvs.srv import Trigger
 
 from unseen_sku_interfaces.msg import ObjectMask, ObjectMaskArray
-from .main_RGB import Sam2Processor
+from .sam2_RGB_processor import Sam2Processor
 from .output_utils import find_next_index
 
 PACKAGE_SHARE_DIRECTORY = Path(get_package_share_directory("unseen_sku_perception"))
@@ -50,7 +50,6 @@ class Sam2Node(Node):
         self.declare_parameter("log_images", False)
         self.declare_parameter("depth_scale", 0.001)
         self.declare_parameter("initial_scene_index", 1)
-        self.declare_parameter("rgbd_reliability", "best_effort")
 
         self.config_file = str(self.get_parameter("config_file").value)
         self.rgbd_topic = str(self.get_parameter("rgbd_topic").value)
@@ -67,18 +66,6 @@ class Sam2Node(Node):
             (self.realsense_rgb_directory, "image_*.png",),
             (self.realsense_depth_directory, "depth_*.tiff",),
         ])
-
-        reliability_name = str(self.get_parameter("rgbd_reliability").value).lower()
-        if reliability_name == "reliable":
-            reliability = ReliabilityPolicy.RELIABLE
-
-        elif reliability_name == "best_effort":
-            reliability = ReliabilityPolicy.BEST_EFFORT
-
-        else:
-            raise ValueError(
-                "rgbd_reliability must be 'best_effort' or 'reliable'."
-            )
 
         rgbd_qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
@@ -137,7 +124,6 @@ class Sam2Node(Node):
         self.get_logger().info(f"Configuration: {self.config_file}")
         self.get_logger().info(f"Log images: {self.log_images}")
         self.get_logger().info(f"Depth scale: {self.depth_scale}")
-        self.get_logger().info(f"RGBD reliability: {reliability_name}")
 
     # RealSense RGBD callback
     def rgbd_callback(self, message):

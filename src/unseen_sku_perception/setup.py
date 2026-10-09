@@ -27,6 +27,7 @@ setup(
     entry_points={
         'console_scripts': [
             "sam2_node = unseen_sku_perception.sam2_node:main",
+            "mask_fusion_node = unseen_sku_perception.mask_fusion.mask_fusion_node:main"
         ],
     },
 )

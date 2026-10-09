@@ -1,0 +1,15 @@
+mask_fusion_node:
+  ros__parameters:
+
+    # Camera calibration
+    helios_to_realsense_file: "~/unseen_sku_ws/tools/camera_calibration/calibration_data/helios_to_realsense_260922/helios_to_realsense_260922.npz"
+
+    realsense_calibration_file: "~/unseen_sku_ws/tools/camera_calibration/calibration_data/realsense_D455f_260922/realsense_D455f_260922.npz"
+
+    # Mask fusion
+    erosion_size: 1
+    z_buffer: false
+
+    # Debug output
+    save_debug: true
+    output_root: "~/unseen_sku_ws/outputs"

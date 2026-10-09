@@ -4,7 +4,7 @@ import cv2
 from pathlib import Path
 import argparse
 
-from project_to_image import load_helios_xyz
+from .project_to_image import load_helios_xyz
 
 def associate_projected_points_with_masks(
     object_masks,

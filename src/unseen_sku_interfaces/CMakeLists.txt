@@ -14,6 +14,8 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObjectMask.msg"
   "msg/ObjectMaskArray.msg"
+  "msg/FusedObject.msg"
+  "msg/FusedObjectArray.msg"
   DEPENDENCIES
     std_msgs
     sensor_msgs
