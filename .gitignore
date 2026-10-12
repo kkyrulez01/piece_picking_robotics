@@ -1,0 +1,35 @@
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# External
+external/
+
+# Virtual environments
+venv/
+.venv/
+
+# Runtime outputs
+outputs/
+
+# Captured sensor data
+data/
+
+# Camera calibration raw datasets
+tools/camera_calibration/calibration_data/
+
+# Editor
+.vscode/
+.idea/
+
+# Misc
+*.log
+*.tmp

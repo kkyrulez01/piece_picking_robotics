@@ -5,8 +5,8 @@ import numpy as np
 import cv2
 import open3d as o3d
 
-RGB_PATH = Path("/home/support/unseen_sku_ws/data/realsense/scene/images")
-OUTPUT_ROOT = Path("/home/support/unseen_sku_ws/outputs")
+RGB_DIRECTORY = Path.home() / "unseen_sku_ws/data/realsense/scene/images"
+OUTPUT_ROOT = Path.home() / "unseen_sku_ws/outputs"
 
 def visualize_3d(paths):
     """
@@ -139,13 +139,35 @@ def visualize_on_rgb(
         cv2.imwrite(str(output_path), image)
         print(f"Saved RGB fusion overlay: {output_path}")
 
-    cv2.imshow(
-        "Helios points on RealSense RGB",
-        image,
-    )
+def save_fusion_overlay(
+    scene_index,
+    output_root=OUTPUT_ROOT,
+    rgb_directory=RGB_DIRECTORY,
+    maximum_points_per_object=10000,
+):
+    """Create scene_XXXX/mask_fusion/helios_mask_fusion_overlay_XXXX.png.
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    Reads the NPZ results already saved by MaskFusionPipeline.process().
+    """
+    scene_index = int(scene_index)
+    output_root = Path(output_root).expanduser()
+    rgb_directory = Path(rgb_directory).expanduser()
+
+    fused_directory = output_root / f"scene_{scene_index:04d}" / "mask_fusion"
+    rgb_path = rgb_directory / f"image_{scene_index:04d}.png"
+    output_path = (
+        fused_directory / f"helios_mask_fusion_overlay_{scene_index:04d}.png"
+    )
+    paths = sorted(fused_directory.glob("object_*.npz"))
+    if not paths:
+        raise FileNotFoundError(f"No fused object NPZ files found: {fused_directory}")
+
+    return visualize_on_rgb(
+        paths=paths,
+        rgb_path=rgb_path,
+        output_path=output_path,
+        maximum_points_per_object=maximum_points_per_object,
+    )
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -172,25 +194,22 @@ def main():
     index = args.index
     index_string = f"{index:04d}"
 
-    fused_directory = OUTPUT_ROOT / f"fused_{index_string}"
-    rgb_path = RGB_PATH / f"image_{index_string}.png"
-    overlay_output = fused_directory / f"helios_mask_fusion_overlay_{index_string}.png"
-    
+    fused_directory = OUTPUT_ROOT / f"scene_{index_string}" / "mask_fusion"
     paths = sorted(fused_directory.glob("object_*.npz"))
+
     if not paths:
         raise RuntimeError(
-            f"No object NPZ files found in "
-            f"{fused_directory}"
+            f"No object NPZ files found in {fused_directory}"
         )
 
     print()
     print("RGB projection")
     print("--------------")
 
-    visualize_on_rgb(
-        paths=paths,
-        rgb_path=rgb_path,
-        output_path=overlay_output,
+    save_fusion_overlay(
+        scene_index=index,
+        output_root=OUTPUT_ROOT,
+        rgb_directory=RGB_DIRECTORY,
     )
 
     print()

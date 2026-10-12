@@ -19,6 +19,7 @@ from unseen_sku_interfaces.msg import (
     ObjectMaskArray,
 )
 from .mask_fusion_processor import MaskFusionProcessor
+from .visualize_fused_objects import save_fusion_overlay
 
 class MaskFusionNode(Node):
     def __init__(self):
@@ -177,6 +178,22 @@ class MaskFusionNode(Node):
             f"scene_{output.scene_index:04d}: published "
             f"{len(output.objects)} fused objects"
         )
+
+        # Save a PNG overlay after the NPZ files have been written.
+        # This does not open any OpenCV/Open3D windows or spawn a process.
+        if self.fusion.save_debug and output.objects:
+            try:
+                png_path = save_fusion_overlay(
+                    scene_index=output.scene_index,
+                    output_root=self.fusion.output_root,
+                )
+                self.get_logger().info(f"Saved fusion overlay: {png_path}")
+            except (FileNotFoundError, OSError, ValueError, KeyError) as error:
+                # A missing debug RGB image must not stop ROS publication.
+                self.get_logger().warning(
+                    f"Could not save fusion overlay for "
+                    f"scene_{output.scene_index:04d}: {error}"
+                )
 
     @staticmethod
     def _cloud_to_xyz(message):

@@ -31,6 +31,7 @@ setup(
     entry_points={
         'console_scripts': [
             "helios2_node = unseen_sku_camera.helios2_node:main",
+            "camera_tf_node = unseen_sku_camera.camera_tf_publisher:main"
         ],
     },
 )
