@@ -57,6 +57,7 @@ def calculate_weighted_ranking_scores(
     sim_suction_weight,
     boundary_weight,
     surface_geometry_weight,
+    footprint_weight
 ):
     """
     Calculate final candidate ranking from normalized quality scores.
@@ -67,6 +68,7 @@ def calculate_weighted_ranking_scores(
         (sim_suction_weight, "sim_score_normalized"),
         (boundary_weight, "boundary_quality"),
         (surface_geometry_weight, "surface_quality"),
+        (footprint_weight, "footprint_quality")
     ]
 
     # Ignore disabled scoring terms

@@ -29,7 +29,7 @@ from geometric_filters.footprint_filter import calculate_candidate_footprint_qua
 from geometric_filters.clearance_filter import calculate_candidate_clearance_quality
 
 @dataclass(frozen=True)
-class SimSuctionResult:
+class SuctionResult:
     candidates_by_object: dict  # ORIGINAL ROS object_id -> ranked candidates
     valid_points: int
     sampled_xyz_m: np.ndarray
@@ -61,7 +61,7 @@ def load_sim_config(config_path):
 
     return config
 
-class SimSuctionPipeline:
+class SuctionPipeline:
     def __init__(self, config):
         self.config = config
         model_config = config["model"]
@@ -245,6 +245,7 @@ class SimSuctionPipeline:
             sim_suction_weight=float(final_ranking_config.get("sim_suction_weight", 0.40)),
             boundary_weight=float(final_ranking_config.get("boundary_weight", 0.30)),
             surface_geometry_weight=float(final_ranking_config.get("surface_geometry_weight", 0.40)),
+            footprint_weight=float(final_ranking_config.get("footprint_weight", 0.30))
         )
 
         maximum = int(candidates_config.get("maximum_final_candidates", 5))
@@ -255,7 +256,7 @@ class SimSuctionPipeline:
             for i, original_id in enumerate(scene.object_ids, start=1)
         }
 
-        return SimSuctionResult(
+        return SuctionResult(
             candidates_by_object=selected,
             valid_points=int(np.count_nonzero(valid)),
             sampled_xyz_m=valid_xyz,

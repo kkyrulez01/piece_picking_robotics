@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -16,9 +17,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObjectMaskArray.msg"
   "msg/FusedObject.msg"
   "msg/FusedObjectArray.msg"
+  "msg/SuctionCandidate.msg"
+  "msg/SuctionCandidateArray.msg"
+
   DEPENDENCIES
     std_msgs
     sensor_msgs
+    geometry_msgs
 )
 
 ament_export_dependencies(
