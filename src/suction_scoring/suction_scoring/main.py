@@ -1,3 +1,7 @@
+"""
+For offline testing.
+"""
+
 import argparse
 import time
 from pathlib import Path
@@ -10,7 +14,7 @@ from .sam2_helios_foreground_filter import foreground_combined_sam2_intersect
 
 from .sim_suction_network import SimSuctionModel
 from .sim_suction_preprocessing import prepare_sim_suction_cloud
-from .sim_suction_results import print_score_statistics, save_results, save_top_candidates_debug_image
+from .suction_results import print_score_statistics, save_results, save_top_candidates_debug_image
 from .suction_candidates import load_sam2_masks, rank_candidates_per_mask, spatial_nms
 from .suction_ranking import normalize_sim_scores_per_object, calculate_weighted_ranking_scores
 
@@ -389,6 +393,7 @@ def main():
         sim_suction_weight=float(final_ranking_config.get("sim_suction_weight", 0.40)),
         boundary_weight=float(final_ranking_config.get("boundary_weight", 0.30)),
         surface_geometry_weight=float(final_ranking_config.get("surface_geometry_weight", 0.40)),
+        footprint_weight=float(final_ranking_config.get("footprint_weight", 0.30))
     )
 
     # Top candidates

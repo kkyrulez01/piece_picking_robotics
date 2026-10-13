@@ -33,3 +33,4 @@ tools/camera_calibration/calibration_data/
 # Misc
 *.log
 *.tmp
+persist.json

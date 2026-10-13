@@ -87,3 +87,6 @@ output:
   directory: /home/support/unseen_sku_ws/outputs
   overwrite: true
   visualize: false
+
+  # For ROS2 node
+  save_debug: true

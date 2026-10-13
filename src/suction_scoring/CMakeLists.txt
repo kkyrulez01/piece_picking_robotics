@@ -10,6 +10,23 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+
+# Install Python Packages
+ament_python_install_package(suction_scoring)
+ament_python_install_package(geometric_filters)
+
+# Install ROS 2 executable
+install(PROGRAMS
+  suction_scoring/suction_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME suction_node
+)
+
+# Install config
+install(DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -22,5 +39,7 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()
