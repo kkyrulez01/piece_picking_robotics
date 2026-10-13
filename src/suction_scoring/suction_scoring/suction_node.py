@@ -161,11 +161,15 @@ class SuctionNode(Node):
             if self.save_debug:
                 try:
                     write_suction_debug(
-                        output_root=str(self.get_parameter('output_root').value),
+                        output_root=self.output_root,
                         scene_index=scene_index,
                         output=output,
                         result=result,
                         scene=scene
+                    )
+                    self.get_logger().info(
+                        f'Scene {scene_index}: debug outputs saved to '
+                        f'{self.output_root}/scene_{scene_index:04d}/sim_suction/'
                     )
                 except Exception as error:
                     self.get_logger().warning(

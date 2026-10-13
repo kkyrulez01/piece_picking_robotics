@@ -182,12 +182,13 @@ class SuctionPipeline:
             boundary_candidates = candidates_by_object
 
         # Calculate score BEFORE spatial NMS
-        final_ranking_config = final_ranking_config.get["final"]
+        final_ranking_config = ranking_config["final"]
         pre_nms_candidates = calculate_weighted_ranking_scores(
             candidates_by_object=boundary_candidates,
             sim_suction_weight=float(final_ranking_config.get("sim_suction_weight", 0.40)),
             boundary_weight=float(final_ranking_config.get("boundary_weight", 0.30)),
-            surface_geometry_weight=0.0
+            surface_geometry_weight=0.0,
+            footprint_weight=0.0,
         )
 
         nms_candidates_by_object = {}
