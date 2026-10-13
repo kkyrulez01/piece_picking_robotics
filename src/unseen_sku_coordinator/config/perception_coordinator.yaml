@@ -1,0 +1,48 @@
+perception_coordinator:
+  ros__parameters:
+
+    # ==========================================
+    # RealSense D455f
+    # ==========================================
+
+    realsense_rgbd_topic: "/camera/camera/rgbd"
+
+    # ==========================================
+    # LUCID Helios2
+    # ==========================================
+
+    helios_capture_service: "/helios2/capture"
+    helios_cloud_topic: "/helios2/points"
+
+    # ==========================================
+    # SAM2
+    # ==========================================
+
+    sam2_process_service: "/sam2/process_scene"
+    sam2_masks_topic: "/sam2/object_masks"
+
+    # ==========================================
+    # Mask Fusion
+    # ==========================================
+
+    fused_objects_topic: "/mask_fusion/objects"
+
+    # ==========================================
+    # Timeouts
+    # Initial development values
+    # ==========================================
+
+    capture_timeout_sec: 15.0
+    camera_inputs_timeout_sec: 15.0
+    sam2_timeout_sec: 120.0
+    fusion_timeout_sec: 20.0
+    scoring_timeout_sec: 60.0
+
+    # ==========================================
+    # Coordinator Behavior
+    # ==========================================
+
+    allow_concurrent_requests: false
+
+    # Coordinator diagnostic interface
+    service_readiness_service: "/perception_coordinator/check_services"

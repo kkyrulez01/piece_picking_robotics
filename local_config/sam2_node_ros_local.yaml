@@ -1,0 +1,7 @@
+sam2_node:
+  ros__parameters:
+    config_file: /home/user/unseen_sku_ws/local_config/sam2_local.yaml
+
+    realsense_rgb_directory: /home/user/unseen_sku_ws/data/realsense/scene/images
+
+    realsense_depth_directory: /home/user/unseen_sku_ws/data/realsense/scene/depth_images
