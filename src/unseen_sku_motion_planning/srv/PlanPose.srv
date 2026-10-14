@@ -1,0 +1,6 @@
+geometry_msgs/PoseStamped target_pose
+string motion_type
+---
+bool success
+string message
+trajectory_msgs/JointTrajectory trajectory

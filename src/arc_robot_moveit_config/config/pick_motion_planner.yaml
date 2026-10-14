@@ -1,0 +1,35 @@
+pick_motion_planner_node:
+  ros__parameters:
+
+    # Robot / MoveIt
+    group_name: ARC_S6
+    base_frame: base_link
+    tcp_link: vacuum_tcp
+
+    # Topics
+    pick_topic: /moma/pick_point_base
+    trajectory_topic: /moma/planned_joint_trajectory
+
+    # Planning Scene OctoMap
+    filtered_cloud_topic: /moma/obstacle_cloud
+    require_octomap: true
+    max_cloud_age: 15.0
+
+    # Pick geometry
+    pre_pick_offset: 0.02
+
+    # Planning
+    planning_pipeline: pilz
+    planner_id: PTP
+    planning_time: 5.0
+    planning_attempts: 1
+
+    # Robot speed
+    velocity_scaling: 0.10
+    acceleration_scaling: 0.10
+
+    # Fixed top-down suction orientation
+    tcp_qx: 1.0
+    tcp_qy: 0.0
+    tcp_qz: 0.0
+    tcp_qw: 0.0

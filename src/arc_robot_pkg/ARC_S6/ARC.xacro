@@ -1,0 +1,207 @@
+<?xml version="1.0" ?>
+<robot name="ARC" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find arc_robot_pkg)/ARC_S6/materials.xacro" />
+
+<link name="base_link">
+  <inertial>
+    <origin xyz="1.4618233783552438e-05 0.0006012982591968157 0.06022551417616961" rpy="0 0 0"/>
+    <mass value="0.571217956896831"/>
+    <inertia ixx="0.001011" iyy="0.001076" izz="0.001408" ixy="-0.0" iyz="1.3e-05" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_1_1">
+  <inertial>
+    <origin xyz="2.3993380200302945e-06 -0.007728928427881378 0.0714567265092763" rpy="0 0 0"/>
+    <mass value="1.7975684391713778"/>
+    <inertia ixx="0.004887" iyy="0.004523" izz="0.003672" ixy="0.0" iyz="4.9e-05" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0 0.0 -0.0919" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0 0.0 -0.0919" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_2_1">
+  <inertial>
+    <origin xyz="-1.423042336709575e-06 -0.07141005689796186 0.18920411824077674" rpy="0 0 0"/>
+    <mass value="5.268777272705612"/>
+    <inertia ixx="0.150322" iyy="0.148058" izz="0.009891" ixy="0.0" iyz="0.000385" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 0.0704 -0.1625" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_2_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0 0.0704 -0.1625" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_2_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_3_1">
+  <inertial>
+    <origin xyz="2.90181262622901e-06 0.05833819261296741 0.18278319192485426" rpy="0 0 0"/>
+    <mass value="2.730055893405654"/>
+    <inertia ixx="0.058881" iyy="0.058271" izz="0.003059" ixy="-0.0" iyz="-0.002643" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0 0.0738 -0.5895" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_3_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0 0.0738 -0.5895" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_3_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_4_1">
+  <inertial>
+    <origin xyz="-1.961041986258019e-06 -0.0664454029689463 -0.0046805400768914485" rpy="0 0 0"/>
+    <mass value="0.7526958375914119"/>
+    <inertia ixx="0.001427" iyy="0.00091" izz="0.00108" ixy="-0.0" iyz="-5.8e-05" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0 0.062 -0.98" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_4_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0 0.062 -0.98" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_4_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_5_1">
+  <inertial>
+    <origin xyz="2.5256099204095896e-06 0.00607093487486518 0.042539427344900904" rpy="0 0 0"/>
+    <mass value="0.5803104509838867"/>
+    <inertia ixx="0.000836" iyy="0.000493" izz="0.00078" ixy="-0.0" iyz="-8e-06" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0 0.1475 -1.029" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_5_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0 0.1475 -1.029" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_5_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="link_6_1">
+  <inertial>
+    <origin xyz="-3.394923322410454e-10 -0.019893247765094102 -0.00015025209272923057" rpy="0 0 0"/>
+    <mass value="0.17860634529456448"/>
+    <inertia ixx="8.7e-05" iyy="0.000127" izz="8.8e-05" ixy="-0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.0 0.1965 -1.0765" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_6_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.0 0.1965 -1.0765" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/link_6_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="Revolute_1" type="revolute">
+  <origin xyz="0.0 0.0 0.0919" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="link_1_1"/>
+  <axis xyz="-0.0 -0.0 1.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolute_2" type="revolute">
+  <origin xyz="-0.0 -0.0704 0.0706" rpy="0 0 0"/>
+  <parent link="link_1_1"/>
+  <child link="link_2_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolute_3" type="revolute">
+  <origin xyz="0.0 -0.0034 0.427" rpy="0 0 0"/>
+  <parent link="link_2_1"/>
+  <child link="link_3_1"/>
+  <axis xyz="-0.0 1.0 0.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolute_4" type="revolute">
+  <origin xyz="0.0 0.0118 0.3905" rpy="0 0 0"/>
+  <parent link="link_3_1"/>
+  <child link="link_4_1"/>
+  <axis xyz="-0.0 -1.0 -0.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolute_5" type="revolute">
+  <origin xyz="0.0 -0.0855 0.049" rpy="0 0 0"/>
+  <parent link="link_4_1"/>
+  <child link="link_5_1"/>
+  <axis xyz="0.0 0.0 1.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<joint name="Revolute_6" type="revolute">
+  <origin xyz="0.0 -0.049 0.0475" rpy="0 0 0"/>
+  <parent link="link_5_1"/>
+  <child link="link_6_1"/>
+  <axis xyz="-0.0 -1.0 0.0"/>
+  <limit upper="3.14159" lower="-3.14159" effort="100" velocity="100"/>
+</joint>
+
+<link name="world"/>
+<joint name="world_joint" type="fixed">
+  <parent link="world"/>
+  <child link="base_link"/>
+</joint>
+
+</robot>

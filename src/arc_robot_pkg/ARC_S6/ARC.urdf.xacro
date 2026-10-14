@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="ARC">
+
+    <!-- Macro for enabling synthetic camera for data collection    -->
+    <xacro:arg name="enable_synthetic_camera" default="false"/>
+
+    <xacro:include filename="$(find arc_robot_pkg)/ARC_S6/ARC.xacro"/>
+
+    <xacro:include filename="$(find arc_robot_pkg)/ARC_S6/ros2_control.xacro"/>
+    <xacro:arc_ros2_control/>
+
+    <!-- Old EOAT -->
+    <!-- <xacro:include filename="$(find arc_robot_pkg)/ARC_S6/EOAT/old_vacuum_gripper.xacro"/>
+    <xacro:add_vacuum_gripper wrist_link="link_6_1" topic_name="/vac_gripper/switch"/> -->
+
+    <!-- New EOAT -->
+    <xacro:include filename="$(find arc_robot_pkg)/ARC_S6/EOAT/new_vacuum_gripper.xacro"/>
+    <xacro:add_vacuum_gripper wrist_link="link_6_1" topic_name="/vac_gripper/switch"/>
+    
+    <!-- <xacro:include filename="$(find arc_robot_pkg)/sensors/rgbd_camera.xacro"/> -->
+    <!-- <xacro:rgbd_camera parent_link="world">
+        <origin xyz="0.0 -0.9 1.28" rpy="0 1.5708 0"/> 
+    </xacro:rgbd_camera> -->
+
+</robot>

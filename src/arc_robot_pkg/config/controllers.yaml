@@ -1,0 +1,24 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    
+    ARC_S6_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+ARC_S6_controller:
+  ros__parameters:
+    joints:
+      - Revolute_1
+      - Revolute_2
+      - Revolute_3
+      - Revolute_4
+      - Revolute_5
+      - Revolute_6
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity

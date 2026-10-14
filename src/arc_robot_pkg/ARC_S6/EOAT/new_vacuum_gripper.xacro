@@ -1,0 +1,85 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="add_vacuum_gripper" params="wrist_link topic_name:=/vac_gripper/switch">
+        <!-- ========================================== -->
+        <!-- NEW EOAT CONFIGURATION                     -->
+        <!-- ========================================== -->
+
+        <!--
+            Mesh coordinates are in millimetres.
+            URDF coordinates are in metres.
+
+            EOAT dimensions approximately:
+              X: 127.44 mm
+              Y: 315.40 mm
+              Z: 256.82 mm
+
+            The suction tool extends along -Y.
+        -->
+        <xacro:property name="mesh_scale" value="0.001 0.001 0.001"/>
+        <xacro:property name="mount_xyz" value="0 0 0"/>
+        <xacro:property name="mount_rpy" value="0 0 0"/>
+        <xacro:property name="mesh_xyz" value="0 0 0"/>
+        <xacro:property name="mesh_rpy" value="0 0 0"/>
+        
+        <!-- Vacuum TCP Transform -->
+        <!--
+            Approximate TCP based on the STL geometry.
+
+            The suction end is near Y = -313.4 mm.
+            Positive TCP Z points along EOAT -Y.
+
+            Must be verified against the physical
+            suction cup contact surface.
+        -->
+        <xacro:property name="tcp_xyz" value="0 -0.3134 0"/>
+        <xacro:property name="tcp_rpy" value="1.57079632679 0 0"/>
+
+        <!-- New EOAT link-->
+        <link name="vacuum_gripper_link">
+            <!-- To add accurate EOAT mass, CG and inertia-->
+            <inertial>
+                <mass value="0.05"/>
+                <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
+            </inertial>
+            <visual>
+                <origin xyz="${mesh_xyz}" rpy="${mesh_rpy}"/>
+                <geometry>
+                    <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/EOAT_only_visual.stl" scale="${mesh_scale}"/>
+                </geometry>
+                <material name="eoat_silver">
+                    <color rgba="0.75 0.75 0.75 1.0"/>
+                </material>
+            </visual>
+            <collision>
+                <origin xyz="${mesh_xyz}" rpy="${mesh_rpy}"/>
+                <geometry>
+                    <mesh filename="package://arc_robot_pkg/ARC_S6/meshes/EOAT_only_collision.stl" scale="${mesh_scale}"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <!-- TCP Frame-->
+        <joint name="${wrist_link}_to_suction" type="fixed">
+            <parent link="${wrist_link}"/> 
+            <child link="vacuum_gripper_link"/>
+            <origin xyz="${mount_xyz}" rpy="${mount_rpy}"/> 
+        </joint>
+
+        <!-- Vacuum TCP -->
+        <link name="vacuum_tcp"/>
+        
+        <joint name="vacuum_gripper_to_tcp" type="fixed">
+            <parent link="vacuum_gripper_link"/>
+            <child link="vacuum_tcp"/>
+            <origin xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
+        </joint>
+
+        <gazebo>
+            <plugin filename="libVacuumGripperPlugin.so" name="custom_plugins::VacuumGripper">
+                <link_name>link_6_1</link_name>
+                <topic>${topic_name}</topic>
+            </plugin>
+        </gazebo>
+    </xacro:macro>
+</robot>

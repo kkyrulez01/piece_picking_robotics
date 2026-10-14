@@ -1,0 +1,71 @@
+#pragma once
+
+namespace moma_depalletizing
+{
+
+enum class ExecutionMode
+{
+  AUTO,
+  MANUAL
+};
+
+enum class DepalletizingPhase
+{
+  IDLE,
+
+  PICK,
+  PLACE,
+  COMPLETE,
+
+  ERROR
+};
+
+enum class PickState
+{
+  WAITING_FOR_PICK_POINT,
+
+	WAITING_FOR_OBSTACLE_CLOUD,
+  WAITING_FOR_OCTOMAP,
+
+  PLANNING_PRE_PICK,
+  WAITING_FOR_PICK_APPROVAL,
+  EXECUTING_PRE_PICK,
+
+  PLANNING_PICK,
+  EXECUTING_PICK,
+
+  ACTIVATING_SUCTION,
+
+  PLANNING_RETRACT,
+  EXECUTING_RETRACT,
+
+	PICK_FINISHED
+};
+
+enum class PlaceState
+{
+	PLANNING_PRE_PLACE,
+  EXECUTING_PRE_PLACE,
+
+  PLANNING_PLACE,
+  EXECUTING_PLACE,
+
+  RELEASING_SUCTION,
+
+  PLANNING_PLACE_RETREAT,
+  EXECUTING_PLACE_RETREAT,
+
+	PLACE_FINISHED
+};
+
+enum class CompleteState
+{
+	CHECKING_FOR_MORE_OBJECTS,
+
+	PLANNING_HOME,
+  EXECUTING_HOME,
+
+	COMPLETE
+};
+
+}  // namespace moma_depalletizing

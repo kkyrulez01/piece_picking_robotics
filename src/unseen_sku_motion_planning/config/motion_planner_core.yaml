@@ -1,0 +1,20 @@
+unseen_sku_motion_planner:
+  ros__parameters:
+
+    # ARC S6
+    group_name: "ARC_S6"
+    base_frame: "base_link"
+    tcp_link: "vacuum_tcp"
+
+    # MoveIt
+    planning_pipeline: "pilz_industrial_motion_planner"
+
+    planning_time: 5.0
+    planning_attempts: 1
+
+    velocity_scaling: 0.10
+    acceleration_scaling: 0.10
+
+    # Suction approach distances
+    pre_pick_distance_m: 0.06
+    retract_distance_m: 0.06

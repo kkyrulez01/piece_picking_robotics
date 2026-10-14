@@ -1,0 +1,704 @@
+#include "unseen_sku_motion_planning/motion_planner.hpp"
+
+#include <cmath>
+#include <Eigen/Geometry>
+#include <utility>
+
+#include <geometry_msgs/msg/pose_stamped.hpp>
+
+#include <moveit/robot_state/conversions.h>
+#include <moveit/robot_state/robot_state.h>
+
+namespace unseen_sku_motion_planning {
+
+MotionPlanner::MotionPlanner(const rclcpp::Node::SharedPtr & node): node_(node) 
+{
+}
+
+bool MotionPlanner::initialize(
+  const std::string & group_name,
+  const std::string & base_frame,
+  const std::string & tcp_link,
+  const std::string & planning_pipeline,
+  double planning_time,
+  int planning_attempts,
+  double velocity_scaling,
+  double acceleration_scaling
+)
+
+{
+  base_frame_ = base_frame;
+  tcp_link_ = tcp_link;
+  planning_pipeline_ = planning_pipeline;
+
+  move_group_ = std::make_unique<moveit::planning_interface::MoveGroupInterface>(node_, group_name);
+
+  move_group_->setPoseReferenceFrame(base_frame_);
+
+  if (!move_group_->setEndEffectorLink(tcp_link_)) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "Could not set '%s' as end-effector link.",
+      tcp_link_.c_str()
+    );
+
+    move_group_.reset();
+    return false;
+  }
+
+  move_group_->setPlanningPipelineId(planning_pipeline);
+  move_group_->setPlanningTime(planning_time);
+  move_group_->setNumPlanningAttempts(planning_attempts);
+  move_group_->setMaxVelocityScalingFactor(velocity_scaling);
+  move_group_->setMaxAccelerationScalingFactor(acceleration_scaling);
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "MotionPlanner initialized."
+  );
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Planning Pipeline initialized: %s",
+    planning_pipeline.c_str()
+  );
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Base frame: %s",
+    base_frame_.c_str()
+  );
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "TCP link: %s",
+    tcp_link_.c_str()
+  );
+
+  return true;
+}
+
+bool MotionPlanner::plan_to_pose(
+  const geometry_msgs::msg::PoseStamped & target_pose,
+  MotionType motion_type,
+  trajectory_msgs::msg::JointTrajectory & output_trajectory
+)
+{
+  if (!move_group_) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "MotionPlanner has not been initialized."
+    );
+
+    return false;
+  }
+
+  // -----------------------------------------------------------
+  // Select Pilz motion type.
+  // -----------------------------------------------------------
+  switch (motion_type) {
+    case MotionType::PTP:
+
+      move_group_->setPlannerId("PTP");
+
+      RCLCPP_INFO(
+        node_->get_logger(),
+        "Planning Pilz PTP motion."
+      );
+
+      break;
+    
+    case MotionType::LIN:
+      move_group_->setPlannerId("LIN");
+
+      RCLCPP_INFO(
+        node_->get_logger(),
+        "Planning Pilz LIN motion."
+      );
+
+      break;
+  }
+  // -----------------------------------------------------------
+  // Start planning from the robot's current actual state.
+  // -----------------------------------------------------------
+  move_group_->setStartStateToCurrentState();
+
+  // Remove any previous Cartesian targets.
+  move_group_->clearPoseTargets();
+
+  if (!move_group_->setPoseTarget(target_pose, tcp_link_)) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "Failed to set pose target for '%s'.",
+      tcp_link_.c_str()
+    );
+
+    return false;
+  }
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Target pose: "
+    "[%.4f, %.4f, %.4f]",
+    target_pose.pose.position.x,
+    target_pose.pose.position.y,
+    target_pose.pose.position.z
+  );
+
+  // -----------------------------------------------------------
+  // Run MoveIt / Pilz planning.
+  // -----------------------------------------------------------
+
+  moveit::planning_interface::
+    MoveGroupInterface::Plan plan;
+
+  const auto result =
+    move_group_->plan(plan);
+
+  // Target no longer needed after this planning request.
+  move_group_->clearPoseTargets();
+
+  // -----------------------------------------------------------
+  // Check planning result.
+  // -----------------------------------------------------------
+
+  if (result != moveit::core::MoveItErrorCode::SUCCESS) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "MoveIt planning failed."
+    );
+
+    return false;
+  }
+
+  if (plan.trajectory_.joint_trajectory.points.empty()) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "MoveIt returned an empty trajectory."
+    );
+
+    return false;
+  }
+
+  // Return generated trajectory to coordinator
+  output_trajectory = plan.trajectory_.joint_trajectory;
+
+  // ---------------------------------------------------------
+  // Check FK of FINAL waypoint of the exact MoveIt plan
+  // ---------------------------------------------------------
+
+  const auto robot_model = move_group_->getRobotModel();
+
+  if (robot_model && !output_trajectory.points.empty())
+  {
+      // Start from the exact start state stored in this MoveIt plan.
+      moveit::core::RobotState final_state(robot_model);
+
+      moveit::core::robotStateMsgToRobotState(
+          plan.start_state_,
+          final_state
+      );
+
+      // Get final joint waypoint generated by MoveIt.
+      const auto & final_point =
+          output_trajectory.points.back();
+
+      if (
+          output_trajectory.joint_names.size() ==
+          final_point.positions.size()
+      )
+      {
+          for (
+              std::size_t i = 0;
+              i < output_trajectory.joint_names.size();
+              ++i
+          )
+          {
+              final_state.setVariablePosition(
+                  output_trajectory.joint_names[i],
+                  final_point.positions[i]
+              );
+          }
+
+          final_state.update();
+
+          // FK for the TCP
+          const Eigen::Isometry3d & final_tcp =
+              final_state.getGlobalLinkTransform(tcp_link_);
+
+          const Eigen::Vector3d final_position =
+              final_tcp.translation();
+
+          const double dx =
+              final_position.x() -
+              target_pose.pose.position.x;
+
+          const double dy =
+              final_position.y() -
+              target_pose.pose.position.y;
+
+          const double dz =
+              final_position.z() -
+              target_pose.pose.position.z;
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "============================================"
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "MOVEIT FINAL TRAJECTORY FK CHECK"
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "Requested TCP:       x=%.6f y=%.6f z=%.6f",
+              target_pose.pose.position.x,
+              target_pose.pose.position.y,
+              target_pose.pose.position.z
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "Final trajectory FK: x=%.6f y=%.6f z=%.6f",
+              final_position.x(),
+              final_position.y(),
+              final_position.z()
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "Endpoint error:      dx=%.3f mm dy=%.3f mm dz=%.3f mm",
+              dx * 1000.0,
+              dy * 1000.0,
+              dz * 1000.0
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "Robot model frame: %s",
+              robot_model->getModelFrame().c_str()
+          );
+
+          RCLCPP_WARN(
+              node_->get_logger(),
+              "============================================"
+          );
+      }
+  }
+
+  auto current_state = move_group_->getCurrentState();
+
+  if (current_state) {
+    moveit::core::RobotState final_state(*current_state);
+
+    const auto & final_point =
+      output_trajectory.points.back();
+
+    for (std::size_t i = 0;
+        i < output_trajectory.joint_names.size();
+        ++i)
+    {
+      final_state.setVariablePosition(
+        output_trajectory.joint_names[i],
+        final_point.positions[i]
+      );
+    }
+
+    final_state.update();
+
+    const Eigen::Isometry3d & final_tcp =
+      final_state.getGlobalLinkTransform(tcp_link_);
+
+    const auto & p = final_tcp.translation();
+
+    RCLCPP_WARN(
+      node_->get_logger(),
+      "REQUESTED TCP: x=%.4f y=%.4f z=%.4f",
+      target_pose.pose.position.x,
+      target_pose.pose.position.y,
+      target_pose.pose.position.z
+    );
+
+    RCLCPP_WARN(
+      node_->get_logger(),
+      "PLANNED FINAL TCP: x=%.4f y=%.4f z=%.4f",
+      p.x(),
+      p.y(),
+      p.z()
+    );
+
+    RCLCPP_WARN(
+      node_->get_logger(),
+      "TCP ENDPOINT ERROR: "
+      "dx=%.4f dy=%.4f dz=%.4f",
+      p.x() - target_pose.pose.position.x,
+      p.y() - target_pose.pose.position.y,
+      p.z() - target_pose.pose.position.z
+    );
+  }
+    RCLCPP_INFO(
+      node_->get_logger(),
+      "Planning successful. "
+      "Trajectory contains %zu points.",
+      output_trajectory.points.size()
+    );
+
+    return true;
+  }
+
+// Plan to named joint configuration
+bool MotionPlanner::plan_to_named_target(
+  const std::string & target_name,
+  trajectory_msgs::msg::JointTrajectory & output_trajectory
+) {
+  if (!move_group_) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "MotionPlanner has not been initialized."
+    );
+
+    return false;
+  }
+
+  // HOME is a joint-space target, so use PTP
+  move_group_->setPlannerId("PTP");
+
+  move_group_->setStartStateToCurrentState();
+
+  if (!move_group_->setNamedTarget(target_name)) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "Named target '%s' does not exist.",
+      target_name.c_str()
+    );
+
+    return false;
+  }
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Planning Pilz PTP to named target '%s'.",
+    target_name.c_str()
+  );
+
+  moveit::planning_interface:: MoveGroupInterface::Plan plan;
+  const auto result = move_group_->plan(plan);
+
+  if (result != moveit::core::MoveItErrorCode::SUCCESS) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "Planning to named target '%s' failed.",
+      target_name.c_str()
+    );
+
+    return false;
+  }
+
+
+  if (plan.trajectory_.joint_trajectory.points.empty()) {
+    RCLCPP_ERROR(
+      node_->get_logger(),
+      "Planning to '%s' returned an empty trajectory.",
+      target_name.c_str()
+    );
+
+    return false;
+  }
+
+  output_trajectory = plan.trajectory_.joint_trajectory;
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Planning to '%s' successful. "
+    "Trajectory contains %zu points.",
+    target_name.c_str(),
+    output_trajectory.points.size()
+  );
+
+  return true;
+}
+
+// Plan Complete Pick Sequence for ONE candidate
+bool MotionPlanner::plan_candidate(
+  const geometry_msgs::msg::PointStamped & suction_point,
+  const geometry_msgs::msg::Vector3Stamped & surface_normal,
+  double pre_pick_distance_m,
+  double retract_distance_m,
+  CandidatePlan & output,
+  std::string & failure_reason
+) {
+    // Never return partially completed plans
+    output = CandidatePlan();
+    failure_reason.clear();
+
+    if (!move_group_) {
+      failure_reason = "MotionPlanner is not initialized.";
+      return false;
+    }
+
+    // 1. Validate coordinate frames
+    if (
+        suction_point.header.frame_id != base_frame_ ||
+        surface_normal.header.frame_id != base_frame_
+    ) {
+        failure_reason = "Both suction point and normal must be in " + base_frame_;
+        return false;
+    }
+
+    // 2. Validate input geometry
+    const Eigen::Vector3d point(
+      suction_point.point.x,
+      suction_point.point.y,
+      suction_point.point.z
+    );
+    const Eigen::Vector3d normal(
+      surface_normal.vector.x,
+      surface_normal.vector.y,
+      surface_normal.vector.z
+    );
+
+    if (!point.allFinite() || !normal.allFinite())
+    {
+      failure_reason = "Candidate contains invalid XYZ or normal.";
+      return false;
+    }
+
+    if (normal.norm() < 1e-6) {
+      failure_reason = "Surface normal has zero magnitude.";
+      return false;
+    }
+
+    normal.normalized();
+
+    // 3. Calculate TCP orientation
+    //
+    // Assumption:
+    //   TCP local +Z points toward the object.
+    //   Surface normal points outward from the object.
+    //
+    // Therefore:
+    //   TCP +Z = -surface_normal
+    //
+    // This initial implementation chooses a deterministic
+    // rotation around the approach direction.
+    const Eigen::Vector3d tool_z = -normal;
+
+    // Pick a Reference Vector & avoid gimbal lock
+    Eigen::Vector3d reference = Eigen::Vector3d::UnitX();
+
+    if (std::abs(reference.dot(tool_z)) > 0.95) {
+      reference = Eigen::Vector3d::UnitY();
+    }
+
+    const Eigen::Vector3d tool_x = (reference - reference.dot(tool_z) * tool_z).normalized();
+    const Eigen::Vector3d tool_y = tool_z.cross(tool_x).normalized();
+
+    Eigen::Matrix3d rotation;
+
+    rotation.col(0) = tool_x;
+    rotation.col(1) = tool_y;
+    rotation.col(2) = tool_z;
+
+    Eigen::Quaterniond quaternion(rotation);
+    quaternion.normalize();
+
+    // 4. Generate pick, pre-pick and retract poses
+    CandidatePlan candidate_plan;
+
+    auto & pick_pose = candidate_plan.pick_pose;
+
+    pick_pose.header = suction_point.header;
+    pick_pose.pose.position = suction_point.point;
+
+    pick_pose.pose.orientation.x = quaternion.x();
+    pick_pose.pose.orientation.y = quaternion.y();
+    pick_pose.pose.orientation.z = quaternion.z();
+    pick_pose.pose.orientation.w = quaternion.w();
+
+    candidate_plan.pre_pick_pose = pick_pose;
+    candidate_plan.retract_pose = pick_pose;
+
+    auto & pre_pick = candidate_plan.pre_pick_pose.pose.position;
+    auto & retract = candidate_plan.retract_pose.pose.position;
+
+    // Move away from surface along outward normal.
+    pre_pick.x += normal.x() * pre_pick_distance_m;
+    pre_pick.y += normal.y() * pre_pick_distance_m;
+    pre_pick.z += normal.z() * pre_pick_distance_m;
+
+    retract.x += normal.x() * retract_distance_m;
+    retract.y += normal.y() * retract_distance_m;
+    retract.z += normal.z() * retract_distance_m;
+
+    RCLCPP_INFO(
+        node_->get_logger(),
+        "Candidate XYZ: [%.4f, %.4f, %.4f]",
+        point.x(),
+        point.y(),
+        point.z()
+    );
+
+    RCLCPP_INFO(
+        node_->get_logger(),
+        "Surface normal: [%.4f, %.4f, %.4f]",
+        normal.x(),
+        normal.y(),
+        normal.z()
+    );
+
+    // 5. Capture initial robot state
+    // 
+    // Each candidate starts from the current robot state.
+    // Robot remains stationary during evaluation.
+    auto initial_state = move_group_->getCurrentState(3.0);
+    if (!initial_state) {
+      failure_reason = "Could not obtain current robot state.";
+      return false;
+    }
+
+    // 6. Helper function to plan a single motion stage
+    //
+    // Each stage starts from an explicitly supplied state,
+    // not automatically from the physical robot's state.
+    auto plan_stage = [&](
+        const std::string & stage,
+        const std::string & planner_id,
+        const geometry_msgs::msg::PoseStamped & target,
+        const moveit::core::RobotState & start_state,
+        trajectory_msgs::msg::JointTrajectory & trajectory,
+        moveit::core::RobotState & end_state
+    ) -> bool
+    {
+        move_group_->clearPoseTargets();
+
+        move_group_->setPlanningPipelineId(planning_pipeline_);
+        move_group_->setPlannerId(planner_id);
+        move_group_->setStartState(start_state);
+
+        if (!move_group_->setPoseTarget(target, tcp_link_))
+        {
+            failure_reason = stage + ": invalid TCP pose target.";
+            return false;
+        }
+
+        moveit::planning_interface::MoveGroupInterface::Plan plan;
+
+        const auto result = move_group_->plan(plan);
+
+        move_group_->clearPoseTargets();
+
+        if (result != moveit::core::MoveItErrorCode::SUCCESS)
+        {
+            failure_reason = stage + ": MoveIt planning failed.";
+            return false;
+        }
+
+        const auto & joint_trajectory =
+            plan.trajectory_.joint_trajectory;
+
+        if (joint_trajectory.points.empty())
+        {
+            failure_reason = stage + ": empty trajectory.";
+            return false;
+        }
+
+        const auto & last_point =
+            joint_trajectory.points.back();
+
+        if (joint_trajectory.joint_names.size() != last_point.positions.size())
+        {
+            failure_reason = stage + ": invalid trajectory dimensions.";
+            return false;
+        }
+
+        // These stages are planned as stop-to-stop motions.
+        if (!last_point.velocities.empty())
+        {
+            for (double velocity : last_point.velocities)
+            {
+                if (!std::isfinite(velocity) ||
+                    std::abs(velocity) > 1e-3)
+                {
+                    failure_reason = stage + ": final joint velocity is not zero.";
+                    return false;
+                }
+            }
+        }
+
+        // Calculate the next planning start state using
+        // the final waypoint of this trajectory.
+        end_state = start_state;
+
+        end_state.setVariablePositions(
+            joint_trajectory.joint_names,
+            last_point.positions
+        );
+
+        end_state.zeroVelocities();
+        end_state.update();
+
+        trajectory = joint_trajectory;
+
+        RCLCPP_INFO(
+            node_->get_logger(),
+            "%s successful: %zu trajectory points",
+            stage.c_str(),
+            trajectory.points.size()
+        );
+
+        return true;
+    };
+
+    // 7. Plan pre-pick PTP
+    moveit::core::RobotState pre_pick_end(*initial_state);
+    if (!plan_stage(
+            "PRE_PICK_PTP",
+            "PTP",
+            candidate_plan.pre_pick_pose,
+            *initial_state,
+            candidate_plan.pre_pick_trajectory,
+            pre_pick_end))
+    {
+        return false;
+    }
+
+    // 8. Plan pick LIN from pre-pick endpoint
+    moveit::core::RobotState pick_end(pre_pick_end);
+    if (!plan_stage(
+            "PICK_LIN",
+            "LIN",
+            candidate_plan.pick_pose,
+            pre_pick_end,
+            candidate_plan.pick_trajectory,
+            pick_end))
+    {
+        return false;
+    }
+
+    // 9. Plan retract LIN from pick endpoint
+    moveit::core::RobotState retract_end(pick_end);
+    if (!plan_stage(
+            "RETRACT_LIN",
+            "LIN",
+            candidate_plan.retract_pose,
+            pick_end,
+            candidate_plan.retract_trajectory,
+            retract_end))
+    {
+        return false;
+    }
+
+    // 10. All stages succeeded
+    output = std::move(candidate_plan);
+    RCLCPP_INFO(
+        node_->get_logger(),
+        "Complete candidate sequence planned successfully."
+    );
+
+    return true;
+
+}
+
+} // namespace moma_motion_planning

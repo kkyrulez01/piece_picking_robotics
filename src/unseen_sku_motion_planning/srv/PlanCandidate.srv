@@ -1,0 +1,16 @@
+# Single suction candidate
+# Both inputs must be expressed in base_link for this first version.
+geometry_msgs/PointStamped suction_point
+geometry_msgs/Vector3Stamped surface_normal
+
+---
+bool success
+string message
+
+geometry_msgs/PoseStamped pre_pick_pose
+geometry_msgs/PoseStamped pick_pose
+geometry_msgs/PoseStamped retract_pose
+
+trajectory_msgs/JointTrajectory pre_pick_trajectory
+trajectory_msgs/JointTrajectory pick_trajectory
+trajectory_msgs/JointTrajectory retract_trajectory
