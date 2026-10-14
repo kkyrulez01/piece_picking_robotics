@@ -5,6 +5,7 @@
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/executors/multi_threaded_executor.hpp>
 
 #include "unseen_sku_motion_planning/motion_planner.hpp"
 #include "unseen_sku_motion_planning/srv/plan_candidate.hpp"
@@ -84,7 +85,11 @@ class MotionPlannerNode : public rclcpp::Node
         return false;
       }
 
-      // Single-candidate planning service
+      // Keep planning requests separate from MoveIt's joint-state callbacks.
+      // The service may block while waiting for a fresh robot state.
+      planning_service_group_ = create_callback_group(
+          rclcpp::CallbackGroupType::MutuallyExclusive);
+
       plan_candidate_service_ = create_service<srv::PlanCandidate>(
           "/unseen_sku/plan_candidate",
           std::bind(
@@ -92,7 +97,9 @@ class MotionPlannerNode : public rclcpp::Node
               this,
               std::placeholders::_1,
               std::placeholders::_2
-          )
+          ),
+          rmw_qos_profile_services_default,
+          planning_service_group_
       );
 
       RCLCPP_INFO(
@@ -222,6 +229,7 @@ class MotionPlannerNode : public rclcpp::Node
     std::shared_ptr<MotionPlanner> motion_planner_;
 
     rclcpp::Service<srv::PlanCandidate>::SharedPtr plan_candidate_service_;
+    rclcpp::CallbackGroup::SharedPtr planning_service_group_;
 
     std::mutex planning_mutex_;
 
@@ -270,7 +278,12 @@ int main(int argc, char ** argv)
         }
         else
         {
-            rclcpp::spin(node);
+            // Allow MoveIt's joint-state subscription to run while a
+            // PlanCandidate callback waits for getCurrentState().
+            rclcpp::executors::MultiThreadedExecutor executor(
+                rclcpp::ExecutorOptions(), 2);
+            executor.add_node(node);
+            executor.spin();
         }
     }
     catch (const std::exception & error)

@@ -1,4 +1,4 @@
-unseen_sku_motion_planner:
+unseen_sku_motion_planner_core:
   ros__parameters:
 
     # ARC S6
@@ -7,7 +7,7 @@ unseen_sku_motion_planner:
     tcp_link: "vacuum_tcp"
 
     # MoveIt
-    planning_pipeline: "pilz_industrial_motion_planner"
+    planning_pipeline: "pilz"
 
     planning_time: 5.0
     planning_attempts: 1

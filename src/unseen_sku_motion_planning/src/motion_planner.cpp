@@ -470,7 +470,7 @@ bool MotionPlanner::plan_candidate(
       return false;
     }
 
-    normal.normalized();
+    const Eigen::Vector3d unit_normal = normal.normalized();
 
     // 3. Calculate TCP orientation
     //
@@ -483,7 +483,7 @@ bool MotionPlanner::plan_candidate(
     //
     // This initial implementation chooses a deterministic
     // rotation around the approach direction.
-    const Eigen::Vector3d tool_z = -normal;
+    const Eigen::Vector3d tool_z = -unit_normal;
 
     // Pick a Reference Vector & avoid gimbal lock
     Eigen::Vector3d reference = Eigen::Vector3d::UnitX();
@@ -523,14 +523,14 @@ bool MotionPlanner::plan_candidate(
     auto & pre_pick = candidate_plan.pre_pick_pose.pose.position;
     auto & retract = candidate_plan.retract_pose.pose.position;
 
-    // Move away from surface along outward normal.
-    pre_pick.x += normal.x() * pre_pick_distance_m;
-    pre_pick.y += normal.y() * pre_pick_distance_m;
-    pre_pick.z += normal.z() * pre_pick_distance_m;
+    // Move away from the surface along the UNIT outward normal.
+    pre_pick.x += unit_normal.x() * pre_pick_distance_m;
+    pre_pick.y += unit_normal.y() * pre_pick_distance_m;
+    pre_pick.z += unit_normal.z() * pre_pick_distance_m;
 
-    retract.x += normal.x() * retract_distance_m;
-    retract.y += normal.y() * retract_distance_m;
-    retract.z += normal.z() * retract_distance_m;
+    retract.x += unit_normal.x() * retract_distance_m;
+    retract.y += unit_normal.y() * retract_distance_m;
+    retract.z += unit_normal.z() * retract_distance_m;
 
     RCLCPP_INFO(
         node_->get_logger(),
