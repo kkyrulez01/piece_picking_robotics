@@ -10,9 +10,9 @@ from output_utils import *
 from points_generation import generate_positive_points, find_uncovered_foreground
 from sam2_segmenter import generate_sam_masks, load_sam2_predictor, remove_duplicate_masks
 
-DEFAULT_BACKGROUND = "/home/support/unseen_sku_ws/data/depth_images/background_box.tiff"
-DEFAULT_OUTPUT_DIR = "/home/support/unseen_sku_ws/outputs"
-DEFAULT_CHECKPOINT = "/home/support/unseen_sku_ws/external/sam2/checkpoints/sam2.1_hiera_tiny.pt"
+DEFAULT_BACKGROUND = "~/unseen_sku_ws/data/depth_images/background_box.tiff"
+DEFAULT_OUTPUT_DIR = "~/unseen_sku_ws/outputs"
+DEFAULT_CHECKPOINT = "~/unseen_sku_ws/external/sam2/checkpoints/sam2.1_hiera_tiny.pt"
 DEFAULT_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"
 
 def parse_arguments():

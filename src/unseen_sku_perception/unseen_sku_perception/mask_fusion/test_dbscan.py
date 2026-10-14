@@ -7,7 +7,7 @@ import open3d as o3d
 
 
 FUSED_DIRECTORY = Path(
-    "/home/support/unseen_sku_ws/outputs/fused_0036"
+    "~/unseen_sku_ws/outputs/fused_0036"
 )
 
 OUTPUT_DIRECTORY = (

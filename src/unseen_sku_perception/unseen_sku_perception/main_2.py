@@ -29,9 +29,9 @@ from depth_utils import filter_masks_by_depth, calculate_height_map
 from sam2_automatic_segmenter import generate_and_filter_automatic_masks, load_automatic_mask_generator
 from sam2_segmenter import remove_duplicate_masks
 
-DEFAULT_CONFIG_FILE = "/home/support/unseen_sku_ws/src/unseen_sku_perception/config/automatic_sam2.yaml"
-DEFAULT_SCENE = "/home/support/unseen_sku_ws/data/depth_images/depth_0006.tiff"
-DEFAULT_RGB = "/home/support/unseen_sku_ws/data/images/image_0006.png"
+DEFAULT_CONFIG_FILE = "~/unseen_sku_ws/src/unseen_sku_perception/config/automatic_sam2.yaml"
+DEFAULT_SCENE = "~/unseen_sku_ws/data/depth_images/depth_0006.tiff"
+DEFAULT_RGB = "~/unseen_sku_ws/data/images/image_0006.png"
 
 def parse_arguments():
     parser = argparse.ArgumentParser(

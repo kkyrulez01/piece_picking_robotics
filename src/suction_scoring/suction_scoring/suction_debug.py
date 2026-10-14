@@ -207,8 +207,176 @@ def save_candidate_overlay(path, output, scene=None, source_image_path=None):
         raise OSError(f'Could not write candidate image: {path}')
     return path
 
-def write_suction_debug(
-    output_root,
+def save_candidate_callout_overlay(path, output, scene=None, source_image_path=None):
+    """Save a bin-focused overlay with external, object-colored candidate callouts.
+
+    Presentation only: reads existing candidates and ranking_score; does not
+    modify ranking, candidates, or inference results.
+    """
+    canvas = None
+    if source_image_path is not None and Path(source_image_path).is_file():
+        canvas = cv2.imread(str(source_image_path), cv2.IMREAD_COLOR)
+
+    if scene is not None:
+        masks = np.asarray(scene.masks, dtype=bool)
+        if masks.ndim != 3 or len(masks) != len(scene.object_ids):
+            raise ValueError('Invalid scene masks/object_ids for callout image')
+        height, width = masks.shape[1:]
+        if canvas is None or canvas.shape[:2] != (height, width):
+            canvas = np.full((height, width, 3), 25, dtype=np.uint8)
+        for index, mask in enumerate(masks):
+            color = np.asarray(_PALETTE_BGR[index % len(_PALETTE_BGR)])
+            canvas[mask] = (
+                0.65 * canvas[mask] + 0.35 * color
+            ).astype(np.uint8)
+    elif canvas is None:
+        return None
+
+    height, width = canvas.shape[:2]
+    candidates = [
+        candidate for candidate in output.candidates
+        if 0 <= int(candidate.pixel_u) < width
+        and 0 <= int(candidate.pixel_v) < height
+    ]
+    if not candidates:
+        return None
+
+    # Crop around the candidate-bearing bin region, retaining some context.
+    u_values = [int(c.pixel_u) for c in candidates]
+    v_values = [int(c.pixel_v) for c in candidates]
+    x0 = max(0, min(u_values) - 90)
+    y0 = max(0, min(v_values) - 50)
+    x1 = min(width, max(u_values) + 91)
+    y1 = min(height, max(v_values) + 51)
+
+    scale = 2
+    image = cv2.resize(
+        canvas[y0:y1, x0:x1], None,
+        fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR,
+    )
+    image_h, image_w = image.shape[:2]
+    panel_w = 250
+    header_h = 54
+
+    # Groups follow the vertical object order: alternate callout sides.
+    object_ids = sorted({int(c.object_id) for c in candidates})
+    center_y = {
+        oid: np.mean([int(c.pixel_v) for c in candidates
+                      if int(c.object_id) == oid])
+        for oid in object_ids
+    }
+    object_ids.sort(key=lambda oid: center_y[oid])
+    side_for_id = {
+        oid: ('right' if idx % 2 == 0 else 'left')
+        for idx, oid in enumerate(object_ids)
+    }
+    by_side = {}
+    for side in ('left', 'right'):
+        side_ids = [oid for oid in object_ids if side_for_id[oid] == side]
+        by_side[side] = [
+            c for oid in side_ids
+            for c in sorted(
+                (c for c in candidates if int(c.object_id) == oid),
+                key=lambda c: int(c.rank),
+            )
+        ]
+
+    max_rows = max(len(by_side['left']), len(by_side['right']))
+    output_h = max(image_h + header_h, header_h + 55 * max_rows + 30)
+    output_w = image_w + 2 * panel_w
+    out = np.full((output_h, output_w, 3), (32, 32, 32), dtype=np.uint8)
+    image_y0 = header_h + (output_h - header_h - image_h) // 2
+    out[image_y0:image_y0 + image_h, panel_w:panel_w + image_w] = image
+
+    cv2.putText(
+        out, f'SCENE {int(output.scene_index):04d} | SUCTION CANDIDATES',
+        (24, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+        (240, 240, 240), 2, cv2.LINE_AA,
+    )
+
+    color_for_id = (
+        {int(oid): _PALETTE_BGR[i % len(_PALETTE_BGR)]
+         for i, oid in enumerate(scene.object_ids)}
+        if scene is not None else {}
+    )
+
+    # Position each object's five callouts near its projected vertical center.
+    # Keep object groups separated within each side panel.
+    for side in ('left', 'right'):
+        side_ids = [oid for oid in object_ids if side_for_id[oid] == side]
+        if not side_ids:
+            continue
+
+        desired = [
+            image_y0 + scale * (center_y[oid] - y0)
+            for oid in side_ids
+        ]
+        max_group_size = max(
+            sum(int(c.object_id) == oid for c in candidates)
+            for oid in side_ids
+        )
+        half_span = 15 * (max_group_size - 1)
+        min_center = header_h + 20 + half_span
+        max_center = output_h - 20 - half_span
+        centers = [float(np.clip(y, min_center, max_center)) for y in desired]
+        min_group_spacing = 2 * half_span + 28
+        for i in range(1, len(centers)):
+            centers[i] = max(centers[i], centers[i - 1] + min_group_spacing)
+        if centers[-1] > max_center:
+            shift = centers[-1] - max_center
+            centers = [center - shift for center in centers]
+
+        for oid, center in zip(side_ids, centers):
+            entries = sorted(
+                (c for c in candidates if int(c.object_id) == oid),
+                key=lambda c: int(c.rank),
+            )
+            row_offsets = 30 * (
+                np.arange(len(entries)) - (len(entries) - 1) / 2
+            )
+            for candidate, offset in zip(entries, row_offsets):
+                color = color_for_id.get(
+                    oid, _PALETTE_BGR[oid % len(_PALETTE_BGR)]
+                )
+                px = panel_w + scale * (int(candidate.pixel_u) - x0)
+                py = image_y0 + scale * (int(candidate.pixel_v) - y0)
+                row_y = int(round(center + offset))
+
+                if side == 'left':
+                    edge_x, line_end_x, text_x = panel_w - 12, panel_w - 30, 20
+                else:
+                    edge_x = panel_w + image_w + 12
+                    line_end_x, text_x = edge_x + 18, edge_x + 24
+
+                cv2.line(out, (px, py), (edge_x, row_y), color, 1, cv2.LINE_AA)
+                cv2.line(
+                    out, (edge_x, row_y), (line_end_x, row_y),
+                    color, 1, cv2.LINE_AA,
+                )
+                score = _finite_float(candidate.ranking_score)
+                score_text = f'{score:.4f}' if score is not None else 'N/A'
+                label = f'O{oid} R{int(candidate.rank)} | {score_text}'
+                cv2.putText(
+                    out, label, (text_x, row_y + 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.50,
+                    (245, 245, 245), 1, cv2.LINE_AA,
+                )
+
+    for candidate in candidates:
+        oid = int(candidate.object_id)
+        color = color_for_id.get(
+            oid, _PALETTE_BGR[oid % len(_PALETTE_BGR)]
+        )
+        px = panel_w + scale * (int(candidate.pixel_u) - x0)
+        py = image_y0 + scale * (int(candidate.pixel_v) - y0)
+        radius = (10 if int(candidate.rank) == 1 else 6) * scale
+        cv2.circle(out, (px, py), radius, color, 2 * scale, cv2.LINE_AA)
+
+    if not cv2.imwrite(str(path), out):
+        raise OSError(f'Could not write candidate callout image: {path}')
+    return path
+
+def write_suction_debug(    output_root,
     scene_index,
     output,
     result,
@@ -246,6 +414,10 @@ def write_suction_debug(
     )
     files['candidate_image'] = save_candidate_overlay(
         directory / 'top_candidates.png', output,
+        scene=scene, source_image_path=source_image_path,
+    )
+    files['candidate_callouts'] = save_candidate_callout_overlay(
+        directory / 'top_candidates_callouts.png', output,
         scene=scene, source_image_path=source_image_path,
     )
     return {key: str(value) for key, value in files.items() if value is not None}

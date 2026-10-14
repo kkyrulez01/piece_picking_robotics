@@ -7,6 +7,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
+    EnvironmentVariable,
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -51,6 +52,8 @@ def generate_launch_description():
         name="helios2_node",
         output="screen",
 
+        prefix=LaunchConfiguration("helios_python"),
+
         parameters=[{
             "config_path": helios_config,
         }],
@@ -87,7 +90,17 @@ def generate_launch_description():
         name="mask_fusion_node",
         output="screen",
 
-        parameters=[fusion_config],
+        prefix=LaunchConfiguration("fusion_python"),
+
+        parameters=[
+            fusion_config,
+            {
+                "input_mode": ParameterValue(
+                    LaunchConfiguration("fusion_input_mode"),
+                    value_type=str,
+                ),
+            },
+        ],
     )
 
     # NEW: Launch Sim-Suction node
@@ -102,11 +115,28 @@ def generate_launch_description():
 
         parameters=[{
             "config_path": suction_config,
+            "input_mode": ParameterValue(
+                LaunchConfiguration("suction_input_mode"),
+                value_type=str,
+            ),
         }],
     )
 
     return LaunchDescription([
         # Launch arguments
+
+        DeclareLaunchArgument(
+            "fusion_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
+        ),
+
+        DeclareLaunchArgument(
+            "suction_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
+        ),
+        
         DeclareLaunchArgument(
             "helios_config",
             default_value=PathJoinSubstitution([
@@ -144,14 +174,57 @@ def generate_launch_description():
                 "sim_suction_config.yaml",
             ])
         ),
-        # NEW: Optional Python environments
+
+        # Python environment for SAM2
         DeclareLaunchArgument(
             "sam2_python",
-            default_value="/home/support/unseen_sku_ws/venv/sam2/bin/python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "sam2",
+                "bin",
+                "python",
+            ]),
         ),
+
+        # Python environment for Sim-Suction
         DeclareLaunchArgument(
             "suction_python",
-            default_value="/home/support/unseen_sku_ws/venv/sim_suction_venv/bin/python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "sim_suction",
+                "bin",
+                "python",
+            ]),
+        ),
+
+        # Helios2 Python environment
+        DeclareLaunchArgument(
+            "helios_python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "arena",
+                "bin",
+                "python",
+            ]),
+        ),
+
+        # Mask Fusion Python environment
+        DeclareLaunchArgument(
+            "fusion_python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "mask_fusion",
+                "bin",
+                "python",
+            ]),
         ),
 
         # Nodes

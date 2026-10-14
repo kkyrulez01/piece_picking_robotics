@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export WORKSPACE="${unseen_sku_ws:-$HOME/unseen_sku_ws}"
+export WORKSPACE="${WORKSPACE:-$HOME/unseen_sku_ws}"
 export MOMA_WS="${MOMA_WS:-$HOME/MOMA_ws}"
 export ARENA_ROS_WS="${ARENA_ROS_WS:-$HOME/arena_camera_ros2/ros2_ws}"
 export ELITE_ROS_WS="${ELITE_ROS_WS:-$HOME/elite_ros_ws}" # Default to elite_ros_ws
@@ -20,8 +20,8 @@ source_ws() {
 # Activate SAM2 venv
 activate_sam2() {
     source /opt/ros/humble/setup.bash
-    source venv/sam2/bin/activate
-    source install/setup.bash
+    source "$WORKSPACE/venv/sam2_venv/bin/activate"
+    source "$WORKSPACE/install/setup.bash"
     echo "sam2_venv activated!"
 }
 
@@ -34,7 +34,7 @@ activate_sim_suction() {
 # Launch RealSense camera
 launch_realsense() {
     ros2 launch realsense2_camera rs_launch.py \
-        config_file:=/home/support/unseen_sku_ws/src/unseen_sku_camera/config/realsense.yaml
+        config_file:="$WORKSPACE/src/unseen_sku_camera/config/realsense.yaml"
 }
 
 # Capture RGB-D image pair using RealSense
@@ -52,4 +52,60 @@ ros2_cap_helios2() {
     ros2 service call \
     /helios2/capture \
     std_srvs/srv/Trigger "{}"
+}
+
+
+# ============================================================
+# UNSEEN SKU - PERCEPTION COORDINATOR TOOLS
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. Start all perception nodes
+# ------------------------------------------------------------
+start_all_nodes() {
+    (
+        cd ~/unseen_sku_ws || return 1
+
+        source /opt/ros/humble/setup.bash
+        source install/setup.bash
+
+        ros2 launch unseen_sku_bringup \
+            coordinator_up_to_suction.launch.py
+    )
+}
+
+
+# ------------------------------------------------------------
+# 2. Process one scene
+# ------------------------------------------------------------
+process_scene() {
+    (
+        cd ~/unseen_sku_ws || return 1
+
+        source /opt/ros/humble/setup.bash
+        source install/setup.bash
+
+        ros2 service call \
+            /perception_coordinator/start_scene_test \
+            std_srvs/srv/Trigger \
+            '{}'
+    )
+}
+
+
+# ------------------------------------------------------------
+# 3. Check scene processing status
+# ------------------------------------------------------------
+scene_status() {
+    (
+        cd ~/unseen_sku_ws || return 1
+
+        source /opt/ros/humble/setup.bash
+        source install/setup.bash
+
+        ros2 service call \
+            /perception_coordinator/scene_test_status \
+            std_srvs/srv/Trigger \
+            '{}'
+    )
 }

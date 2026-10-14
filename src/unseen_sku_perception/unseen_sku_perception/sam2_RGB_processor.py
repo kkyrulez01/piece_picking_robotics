@@ -31,7 +31,7 @@ from .depth_utils import calculate_height_map, filter_masks_by_depth
 from .sam2_automatic_segmenter import load_automatic_mask_generator
 from .sam2_segmenter import SamMaskResult, remove_duplicate_masks
 
-DEFAULT_CONFIG_FILE = "/home/support/unseen_sku_ws/src/unseen_sku_perception/config/sam2.yaml"
+DEFAULT_CONFIG_FILE = "~/unseen_sku_ws/src/unseen_sku_perception/config/sam2.yaml"
 
 def parse_arguments():
     parser = argparse.ArgumentParser(

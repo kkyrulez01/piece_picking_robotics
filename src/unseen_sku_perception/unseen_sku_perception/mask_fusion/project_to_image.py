@@ -222,12 +222,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--extrinsic",
-        default="/home/support/unseen_sku_ws/tools/camera_calibration/calibration_data/helios_to_realsense_260922/helios_to_realsense_260922.npz",
+        default="~/unseen_sku_ws/tools/camera_calibration/calibration_data/helios_to_realsense_260922/helios_to_realsense_260922.npz",
         help="Derived Helios2 -> RealSense extrinsic .npz.",
     )
     parser.add_argument(
         "--realsense-calibration",
-        default="/home/support/unseen_sku_ws/tools/camera_calibration/calibration_data/realsense_D455f_260922/realsense_D455f_260922.npz",
+        default="~/unseen_sku_ws/tools/camera_calibration/calibration_data/realsense_D455f_260922/realsense_D455f_260922.npz",
         help="RealSense calibration .npz containing camera_matrix/dist_coeffs.",
     )
     parser.add_argument(
@@ -271,10 +271,10 @@ def main() -> None:
     colors_rgb = image_rgb[v, u]
 
     rgb_path = Path(args.rgb)
-    # /home/support/unseen_sku_ws/data/realsense/scene/images/image_0035.png
+    # ~/unseen_sku_ws/data/realsense/scene/images/image_0035.png
     index_stem = rgb_path.stem
     index = int(index_stem.rsplit("_", 1)[1])
-    output_dir =  Path("/home/support/unseen_sku_ws/outputs") / f"scene_{index:04d}" / "mask_fusion"
+    output_dir =  Path("~/unseen_sku_ws/outputs") / f"scene_{index:04d}" / "mask_fusion"
     output_path = output_dir / f"helios_projected_to_realsense_rgb_{index:04d}.npz"
     output_dir.mkdir(parents=True, exist_ok=True)
 

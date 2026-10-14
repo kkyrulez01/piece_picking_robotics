@@ -15,6 +15,13 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObjectMask.msg"
   "msg/ObjectMaskArray.msg"
+  "msg/SuctionInput.msg"
+  "msg/SuctionResult.msg"
+
+  # Coordinator-controlled Mask Fusion
+  "msg/FusionInput.msg"
+  "msg/FusionResult.msg"
+
   "msg/FusedObject.msg"
   "msg/FusedObjectArray.msg"
   "msg/SuctionCandidate.msg"

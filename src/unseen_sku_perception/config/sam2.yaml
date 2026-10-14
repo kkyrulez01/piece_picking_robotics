@@ -1,8 +1,8 @@
 inputs:
-  background: /home/support/unseen_sku_ws/data/realsense/background/depth_images/background_box.tiff
+  background: ~/unseen_sku_ws/data/realsense/background/depth_images/background_box.tiff
 
 outputs:
-  output_directory: /home/support/unseen_sku_ws/outputs
+  output_directory: ~/unseen_sku_ws/outputs
   log_images: true
   
 foreground:
@@ -34,7 +34,7 @@ depth_filter:
   minimum_prompt_valid_pixels: 5
 
 sam2:
-  checkpoint: /home/support/unseen_sku_ws/external/sam2/checkpoints/sam2.1_hiera_tiny.pt
+  checkpoint: ~/unseen_sku_ws/external/sam2/checkpoints/sam2.1_hiera_tiny.pt
   model_config: configs/sam2.1/sam2.1_hiera_t.yaml
   points_per_batch: 16
   predicted_iou_threshold: 0.6

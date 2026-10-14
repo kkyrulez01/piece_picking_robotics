@@ -1,0 +1,80 @@
+perception_coordinator:
+  ros__parameters:
+
+    # ==========================================
+    # RealSense D455f
+    # ==========================================
+
+    realsense_rgbd_topic: "/camera/camera/rgbd"
+
+    # ==========================================
+    # LUCID Helios2
+    # ==========================================
+
+    helios_capture_service: "/helios2/capture"
+    helios_cloud_topic: "/helios2/points"
+
+    # ==========================================
+    # SAM2
+    # ==========================================
+
+    sam2_process_service: "/sam2/process_scene"
+    sam2_masks_topic: "/sam2/object_masks"
+
+    # ==========================================
+    # Mask Fusion
+    # ==========================================
+
+    fusion_input_topic: "/coordinator/fusion_input"
+    fusion_result_topic: "/mask_fusion/result"
+    fused_objects_topic: "/mask_fusion/objects"
+
+    # Enable coordinator-controlled fusion after SAM2.
+    enable_mask_fusion: true
+
+    # ==========================================
+    # Sim-Suction
+    # ==========================================
+
+    suction_input_topic: "/coordinator/suction_input"
+    suction_result_topic: "/sim_suction/result"
+
+    # Keep disabled until SceneTransaction integration
+    # and scoring-result validation are implemented.
+    enable_suction_scoring: false
+
+    # ==========================================
+    # Timeouts
+    # Initial development values
+    # ==========================================
+
+    capture_timeout_sec: 15.0
+    camera_inputs_timeout_sec: 15.0
+    sam2_timeout_sec: 120.0
+    fusion_timeout_sec: 20.0
+    scoring_timeout_sec: 60.0
+
+    # ==========================================
+    # Coordinator Behavior
+    # ==========================================
+
+    allow_concurrent_requests: false
+
+    # ==========================================
+    # Observation History
+    # ==========================================
+
+    rgbd_history_size: 6000 # coordinator can retain approximately 200 seconds of RealSense observation metadata
+
+    # Coordinator diagnostic interface
+    service_readiness_service: "/perception_coordinator/check_services"
+
+    # ==========================================
+    # Development-only scene transaction
+    # ==========================================
+
+    scene_test_start_service: "/perception_coordinator/start_scene_test"
+    scene_test_status_service: "/perception_coordinator/scene_test_status"
+
+    # Timer used to advance the transaction state machine
+    transaction_tick_period_sec: 0.05 # coordinator checks the transaction's progress approximately 20 times per second.

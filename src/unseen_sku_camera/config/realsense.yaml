@@ -42,5 +42,5 @@ colorizer.enable: false
 # =========================
 
 rgb_camera.enable_auto_exposure: false
-rgb_camera.exposure: 600
+rgb_camera.exposure: 600  # Might change later depending on test results and conditions
 rgb_camera.gain: 64

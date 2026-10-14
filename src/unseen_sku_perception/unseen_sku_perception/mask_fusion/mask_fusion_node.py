@@ -14,6 +14,8 @@ from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import PointCloud2, PointField
 
 from unseen_sku_interfaces.msg import (
+    FusionInput,
+    FusionResult,
     FusedObject,
     FusedObjectArray,
     ObjectMaskArray,
@@ -29,6 +31,14 @@ class MaskFusionNode(Node):
         self.declare_parameter("helios_topic", "/helios2/points")
         self.declare_parameter("masks_topic", "/sam2/object_masks")
         self.declare_parameter("output_topic", "/mask_fusion/objects")
+
+        # M2.3B.2: Optional coordinator-controlled input.
+        self.declare_parameter("input_mode", "standalone")
+        self.declare_parameter("fusion_input_topic", "/coordinator/fusion_input",)
+
+        # M2.3C.2: Transaction-correlated fusion results.
+        self.declare_parameter("fusion_result_topic", "/mask_fusion/result",)
+
         self.declare_parameter("helios_to_realsense_file", "")
         self.declare_parameter("realsense_calibration_file", "")
         self.declare_parameter("erosion_size", 1)
@@ -63,24 +73,58 @@ class MaskFusionNode(Node):
         self._pending_masks = None
         self._last_scene_index = None
 
-        # Subscribers
+        # Select exactly one input mode.
+        self._input_mode = str(self.get_parameter("input_mode").value).strip().lower()
+
+        if self._input_mode not in ("standalone", "controlled"):
+            raise ValueError(f"Unsupported Mask Fusion input_mode: {self._input_mode}")
+
+
+
+        # --------------------------------------------------
+        # M2.3B.2: Configurable Mask Fusion input modes
+        # --------------------------------------------------
+
         reliable_qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
         )
-        self.cloud_sub = self.create_subscription(
-            PointCloud2,
-            str(self.get_parameter("helios_topic").value),
-            self._helios_callback,
-            reliable_qos
-        )
-        self.masks_sub = self.create_subscription(
-            ObjectMaskArray,
-            str(self.get_parameter("masks_topic").value),
-            self._masks_callback,
-            reliable_qos
-        )
+
+        self.cloud_sub = None
+        self.masks_sub = None
+        self.fusion_input_sub = None
+
+        if self._input_mode == "standalone":
+
+            # Existing behavior:
+            # Independently receive Helios2 clouds and SAM2 masks.
+
+            self.cloud_sub = self.create_subscription(
+                PointCloud2,
+                str(self.get_parameter("helios_topic").value),
+                self._helios_callback,
+                reliable_qos,
+            )
+
+            self.masks_sub = self.create_subscription(
+                ObjectMaskArray,
+                str(self.get_parameter("masks_topic").value),
+                self._masks_callback,
+                reliable_qos,
+            )
+
+        else:
+
+            # Controlled behavior:
+            # Receive one complete coordinator-approved pair.
+
+            self.fusion_input_sub = self.create_subscription(
+                FusionInput,
+                str(self.get_parameter("fusion_input_topic").value),
+                self._fusion_input_callback,
+                reliable_qos,
+            )
 
         # Publishers
         self.objects_pub = self.create_publisher(
@@ -89,8 +133,22 @@ class MaskFusionNode(Node):
             10
         )
 
+        # ------------------------------------------
+        # M2.3C.2 — FusionResult Publisher
+        # ------------------------------------------
+
+        self.fusion_result_pub = None
+
+        if self._input_mode == "controlled":
+
+            self.fusion_result_pub = self.create_publisher(
+                FusionResult,
+                str(self.get_parameter("fusion_result_topic").value),
+                reliable_qos,
+            )
+
         self.get_logger().info(
-            "Mask fusion ready. Waiting for /helios2/points and /sam2/object_masks..."
+            f"Mask Fusion ready. Input mode: {self._input_mode}"
         )
 
     def _helios_callback(self, message):
@@ -104,28 +162,171 @@ class MaskFusionNode(Node):
         self._process_if_ready()
 
     def _process_if_ready(self):
+        """
+        Existing standalone behavior:
+        Process the latest available cloud and masks.
+        """
+
         with self._lock:
+
             if self._pending_cloud is None or self._pending_masks is None:
                 return
+
             cloud = self._pending_cloud
             masks = self._pending_masks
+
             self._pending_cloud = None
             self._pending_masks = None
 
-        scene_index = int(masks.scene_index)
-        if scene_index == self._last_scene_index:
-            self.get_logger().warning(
-                f"Skipping duplicate SAM2 scene_{scene_index:04d}"
+        self._process_pair(cloud, masks)
+
+
+    def _fusion_input_callback(self, message):
+        """
+        M2.3B.2:
+        Process an atomic coordinator-approved observation pair.
+        """
+
+        scene_id = message.scene_id.strip()
+
+        if not scene_id:
+            self.get_logger().error(
+                "Rejected FusionInput: missing coordinator scene_id"
             )
             return
 
+        self.get_logger().info(
+            f"Received coordinator-approved pair: scene_id={scene_id}"
+        )
+
+        self._process_pair(
+            message.cloud,
+            message.masks,
+            scene_id=scene_id,
+        )
+
+    def _publish_controlled_result(
+        self,
+        scene_id,
+        scene_index,
+        success,
+        detail,
+        fused_objects=None,
+    ):
+        """
+        Publish the outcome of one coordinator-controlled
+        Mask Fusion request.
+
+        Standalone mode does not publish FusionResult.
+        """
+
+        if scene_id is None:
+            return
+
+        result = FusionResult()
+
+        result.scene_id = scene_id
+        result.scene_index = int(scene_index)
+        result.success = bool(success)
+        result.detail = str(detail)
+
+        # Include the processed objects only on success.
+        if fused_objects is not None:
+            result.fused_objects = fused_objects
+
+        self.fusion_result_pub.publish(result)
+
+        self.get_logger().info(
+            f"Published FusionResult: "
+            f"scene_id={scene_id}; "
+            f"scene_index={scene_index}; "
+            f"success={success}"
+        )
+
+
+    def _process_pair(self, cloud, masks, scene_id=None):
+        """
+        Shared processing path for standalone and controlled modes.
+
+        In controlled mode, publish a transaction-correlated
+        FusionResult for success or processing failure.
+        """
+
+        scene_index = int(masks.scene_index)
+
+        # ------------------------------------------
+        # Duplicate scene protection
+        # ------------------------------------------
+
+        if scene_index == self._last_scene_index:
+
+            detail = (f"Duplicate SAM2 scene_{scene_index:04d}")
+
+            self.get_logger().warning(detail)
+
+            if scene_id is not None:
+                self._publish_controlled_result(
+                    scene_id=scene_id,
+                    scene_index=scene_index,
+                    success=False,
+                    detail=detail,
+                )
+
+            return
+
+        # ------------------------------------------
+        # Execute the existing fusion algorithm
+        # ------------------------------------------
+
         try:
-            self._publish_fused_objects(cloud, masks)
-            self._last_scene_index = scene_index
+
+            fused_objects = self._publish_fused_objects(cloud, masks)
+
         except Exception as error:
-            self.get_logger().error(
-                f"Mask fusion failed for scene_{scene_index:04d}: {error}"
+
+            detail = (
+                f"Mask Fusion failed for "
+                f"scene_{scene_index:04d}: {error}"
             )
+
+            self.get_logger().error(detail)
+
+            # Explicitly report failure to the coordinator.
+            if scene_id is not None:
+
+                self._publish_controlled_result(
+                    scene_id=scene_id,
+                    scene_index=scene_index,
+                    success=False,
+                    detail=detail,
+                )
+
+            return
+
+        # ------------------------------------------
+        # Processing succeeded
+        # ------------------------------------------
+
+        self._last_scene_index = scene_index
+
+        # Standalone mode ends here.
+        if scene_id is None:
+            return
+
+        # ------------------------------------------
+        # Report successful controlled fusion
+        # ------------------------------------------
+
+        self._publish_controlled_result(
+            scene_id=scene_id,
+            scene_index=scene_index,
+            success=True,
+            detail=(
+                "Fusion completed; "
+                f"fused_objects={len(fused_objects.objects)}"
+            ),
+            fused_objects=fused_objects,
+        )
 
     def _publish_fused_objects(self, cloud_msg, mask_msg):
         """
@@ -194,6 +395,10 @@ class MaskFusionNode(Node):
                     f"Could not save fusion overlay for "
                     f"scene_{output.scene_index:04d}: {error}"
                 )
+        
+        # M2.3C.2:
+        # Return the published objects for the coordinator result.
+        return output
 
     @staticmethod
     def _cloud_to_xyz(message):

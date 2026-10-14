@@ -50,6 +50,8 @@ class Sam2Node(Node):
         self.declare_parameter("log_images", False)
         self.declare_parameter("depth_scale", 0.001)
         self.declare_parameter("initial_scene_index", 1)
+        self.declare_parameter("realsense_rgb_directory",str(Path.home() / "unseen_sku_ws/data/realsense/scene/images"),)
+        self.declare_parameter("realsense_depth_directory",str(Path.home() / "unseen_sku_ws/data/realsense/scene/depth_images"),)
 
         self.config_file = str(self.get_parameter("config_file").value)
         self.rgbd_topic = str(self.get_parameter("rgbd_topic").value)
@@ -58,8 +60,9 @@ class Sam2Node(Node):
         self.log_images = bool(self.get_parameter("log_images").value)
         self.depth_scale = float(self.get_parameter("depth_scale").value)
         
-        self.realsense_rgb_directory = Path("/home/support/unseen_sku_ws/data/realsense/scene/images")
-        self.realsense_depth_directory = Path("/home/support/unseen_sku_ws/data/realsense/scene/depth_images")
+        self.realsense_rgb_directory = Path(self.get_parameter("realsense_rgb_directory").value).expanduser().resolve()
+
+        self.realsense_depth_directory = Path(self.get_parameter("realsense_depth_directory").value).expanduser().resolve()
         self.realsense_rgb_directory.mkdir(parents=True, exist_ok=True)
         self.realsense_depth_directory.mkdir(parents=True, exist_ok=True)
         self.next_scene_index = find_next_index([
