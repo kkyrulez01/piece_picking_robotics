@@ -59,7 +59,7 @@ class Helios2Node(Node):
         helios_config = load_camera_config(config_path, "helios2_capture")
         serial = helios_config.get("serial")
         exposure = helios_config.get("exposure", "Exp250Us")
-        output_root = helios_config.get("output_root", "/home/support/data/helios2")
+        output_root = helios_config.get("output_root", "~/data/helios2")
         self.output_root = Path(output_root).expanduser().resolve()
         self.save_debug = bool(helios_config.get("save_debug", True))
         self.scene_output_directory = self.output_root / "scene"

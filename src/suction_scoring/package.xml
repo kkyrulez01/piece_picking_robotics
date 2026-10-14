@@ -14,6 +14,7 @@
 
   <!-- ROS 2 runtime dependencies -->
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>unseen_sku_interfaces</exec_depend>

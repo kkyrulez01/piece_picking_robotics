@@ -12,25 +12,25 @@ import open3d as o3d
 # ============================================================
 
 BACKGROUND_PATH = Path(
-    "/home/support/unseen_sku_ws/data/helios2/background/background_tote.npz"
+    "~/unseen_sku_ws/data/helios2/background/background_tote.npz"
 )
 
 SCENE_PATH = Path(
-    "/home/support/unseen_sku_ws/data/helios2/scene/scene_0037.npz"
+    "~/unseen_sku_ws/data/helios2/scene/scene_0037.npz"
 )
 
 RGB_PATH = Path(
-    "/home/support/unseen_sku_ws/data/realsense/scene/images/image_0037.png"
+    "~/unseen_sku_ws/data/realsense/scene/images/image_0037.png"
 )
 
 TRANSFORM_PATH = Path(
-    "/home/support/unseen_sku_ws/tools/camera_calibration/"
+    "~/unseen_sku_ws/tools/camera_calibration/"
     "calibration_data/helios_to_realsense_260922/"
     "helios_to_realsense_260922.npz"
 )
 
 REALSENSE_CALIBRATION_PATH = Path(
-    "/home/support/unseen_sku_ws/tools/camera_calibration/"
+    "~/unseen_sku_ws/tools/camera_calibration/"
     "calibration_data/realsense_D455f_260922/"
     "realsense_D455f_260922.npz"
 )
@@ -41,23 +41,23 @@ REALSENSE_CALIBRATION_PATH = Path(
 # ============================================================
 
 OUTPUT_PATH = Path(
-    "/home/support/unseen_sku_ws/outputs/test_0037.npz"
+    "~/unseen_sku_ws/outputs/test_0037.npz"
 )
 
 PLY_OUTPUT_PATH = Path(
-    "/home/support/unseen_sku_ws/outputs/test_0037.ply"
+    "~/unseen_sku_ws/outputs/test_0037.ply"
 )
 
 PROJECTED_MASK_OUTPUT_PATH = Path(
-    "/home/support/unseen_sku_ws/outputs/test_0037_projected_mask.png"
+    "~/unseen_sku_ws/outputs/test_0037_projected_mask.png"
 )
 
 OVERLAY_OUTPUT_PATH = Path(
-    "/home/support/unseen_sku_ws/outputs/test_0037_overlay.png"
+    "~/unseen_sku_ws/outputs/test_0037_overlay.png"
 )
 
 ROI_OVERLAY_OUTPUT_PATH = Path(
-    "/home/support/unseen_sku_ws/outputs/test_0037_overlay_roi.png"
+    "~/unseen_sku_ws/outputs/test_0037_overlay_roi.png"
 )
 
 

@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 
-from .scene_context import SceneContext
+from .scene_transaction import SceneTransaction
 from .perception_manager import PerceptionManager
 from std_srvs.srv import Trigger
 
@@ -18,7 +18,15 @@ REQUIRED_PARAMETERS = (
     "sam2_process_service",
     "sam2_masks_topic",
 
+    "fusion_input_topic",
+    "fusion_result_topic",
     "fused_objects_topic",
+    "enable_mask_fusion",
+
+    # Sim-Suction
+    "suction_input_topic",
+    "suction_result_topic",
+    "enable_suction_scoring",
 
     "capture_timeout_sec",
     "camera_inputs_timeout_sec",
@@ -28,6 +36,10 @@ REQUIRED_PARAMETERS = (
 
     "allow_concurrent_requests",
     "service_readiness_service",
+    "rgbd_history_size",
+    "scene_test_start_service",
+    "scene_test_status_service",
+    "transaction_tick_period_sec",
 )
 
 
@@ -57,13 +69,17 @@ class PerceptionCoordinator(Node):
 
         self._validate_configuration()
 
-        # Only one scene can be processed at a time.
-        self.active_scene: SceneContext | None = None
-
-        # Register camera, segmentation, and fusion interfaces.
+        # Perception communication interfaces
         self.perception_manager = PerceptionManager(
             node=self,
             settings=self.settings,
+        )
+
+        # Single-scene transaction controller
+        self.scene_transaction = SceneTransaction(
+            manager=self.perception_manager,
+            settings=self.settings,
+            logger=self.get_logger(),
         )
 
         # Diagnostic service for checking required ROS 2 services.
@@ -81,6 +97,26 @@ class PerceptionCoordinator(Node):
             "Configuration loaded successfully."
         )
 
+        # Manual development-only scene request
+        self.scene_test_start_server = self.create_service(
+            Trigger,
+            self.settings["scene_test_start_service"],
+            self._start_scene_test_callback,
+        )
+
+        # Query the latest scene status
+        self.scene_test_status_server = self.create_service(
+            Trigger,
+            self.settings["scene_test_status_service"],
+            self._scene_test_status_callback,
+        )
+
+        # Periodically advance the active transaction
+        self.scene_transaction_timer = self.create_timer(
+            float(self.settings["transaction_tick_period_sec"]),
+            self.scene_transaction.tick,
+        )
+
     def _validate_configuration(self):
         """Validate coordinator configuration."""
 
@@ -96,10 +132,49 @@ class PerceptionCoordinator(Node):
                     raise ValueError(
                         f"{name} must be a positive number"
                     )
+        
+        if type(self.settings["enable_mask_fusion"]) is not bool:
+            raise ValueError(
+                "enable_mask_fusion must be true or false"
+            )
+
+        # Validate suction-scoring configuration.
+
+        if type(self.settings["enable_suction_scoring"]) is not bool:
+            raise ValueError(
+                "enable_suction_scoring must be true or false"
+            )
+
+        # Coordinator-controlled suction requires validated Mask Fusion.
+        if (
+            self.settings["enable_suction_scoring"]
+            and not self.settings["enable_mask_fusion"]
+        ):
+            raise ValueError(
+                "enable_suction_scoring requires enable_mask_fusion: true"
+            )
 
         if self.settings["allow_concurrent_requests"] is not False:
             raise ValueError(
                 "Phase 1 requires allow_concurrent_requests: false"
+            )
+        
+        history_size = self.settings["rgbd_history_size"]
+
+        if type(history_size) is not int or history_size <= 0:
+            raise ValueError(
+                "rgbd_history_size must be a positive integer"
+            )
+
+        period = self.settings["transaction_tick_period_sec"]
+
+        if (
+            isinstance(period, bool)
+            or not isinstance(period, (int, float))
+            or period <= 0
+        ):
+            raise ValueError(
+                "transaction_tick_period_sec must be positive"
             )
 
     def _check_services_callback(self, request, response):
@@ -120,8 +195,30 @@ class PerceptionCoordinator(Node):
 
         return response
     
+    def _start_scene_test_callback(self, request, response):
+        """Start one development-only perception transaction."""
+
+        del request
+
+        accepted, message = self.scene_transaction.begin()
+
+        response.success = accepted
+        response.message = message
+
+        return response
 
 
+    def _scene_test_status_callback(self, request, response):
+        """Return the status of the latest scene transaction."""
+
+        del request
+
+        available, message = self.scene_transaction.describe()
+
+        response.success = available
+        response.message = message
+
+        return response
 def main(args=None):
 
     rclpy.init(args=args)

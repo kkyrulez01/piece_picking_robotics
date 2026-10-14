@@ -1,5 +1,5 @@
 input:
-  cloud_path: /home/user/unseen_sku_ws/outputs/test_0037.npz
+  cloud_path: ~/unseen_sku_ws/outputs/test_0037.npz
 camera:
   position_m: [0.0, 0.0, 0.0]
 
@@ -16,13 +16,13 @@ preprocessing:
   random_seed: 42
 
 model:
-  repository_path: /home/user/unseen_sku_ws/external/Sim-Suction-API
-  checkpoint_path: /home/user/unseen_sku_ws/external/Sim-Suction-API/Sim-Suction-Pointnet/models/MV_PCL_1550_500.model
+  repository_path: ~/unseen_sku_ws/external/Sim-Suction-API
+  checkpoint_path: ~/unseen_sku_ws/external/Sim-Suction-API/Sim-Suction-Pointnet/models/MV_PCL_1550_500.model
 
   device: cuda
 
 masks:
-  root_directory: /home/user/unseen_sku_ws/outputs
+  root_directory: ~/unseen_sku_ws/outputs
 
 candidates:
   minimum_score: 0.0
@@ -84,6 +84,9 @@ ranking:
     footprint_weight: 0.30
 
 output:
-  directory: /home/user/unseen_sku_ws/outputs
+  directory: ~/unseen_sku_ws/outputs
   overwrite: true
   visualize: false
+
+  # For ROS2 node
+  save_debug: true

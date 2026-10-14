@@ -3,19 +3,23 @@
 import numpy as np
 import torch
 
+from pathlib import Path
 from sim_suction_network import SimSuctionModel
 
 
-REPOSITORY_PATH = (
-    "/home/support/unseen_sku_ws/"
-    "external/Sim-Suction-API"
+WORKSPACE_ROOT = Path.home() / "unseen_sku_ws"
+
+REPOSITORY_PATH = str(
+    WORKSPACE_ROOT
+    / "external"
+    / "Sim-Suction-API"
 )
 
-CHECKPOINT_PATH = (
-    "/home/support/unseen_sku_ws/"
-    "external/Sim-Suction-API/"
-    "Sim-Suction-Pointnet/models/"
-    "MV_PCL_1550_500.model"
+CHECKPOINT_PATH = str(
+    Path(REPOSITORY_PATH)
+    / "Sim-Suction-Pointnet"
+    / "models"
+    / "MV_PCL_1550_500.model"
 )
 
 

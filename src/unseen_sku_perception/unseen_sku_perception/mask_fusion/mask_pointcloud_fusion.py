@@ -302,15 +302,15 @@ def main():
     index_string = f"{scene_index:04d}"
 
     # Original Helios point cloud
-    helios_dir = Path("/home/support/unseen_sku_ws/data/helios2/pointclouds")
+    helios_dir = Path("~/unseen_sku_ws/data/helios2/pointclouds")
     helios_path = helios_dir / f"scene_{index_string}.npz"
 
     # RealSense RGB
-    rgb_dir = Path("/home/support/unseen_sku_ws/data/realsense/scene/images")
+    rgb_dir = Path("~/unseen_sku_ws/data/realsense/scene/images")
     rgb_path = rgb_dir / f"image_{index_string}.png"
 
     # Fusion output directory
-    scene_dir = Path("/home/support/unseen_sku_ws/outputs") / f"scene_{index_string}"
+    scene_dir = Path("~/unseen_sku_ws/outputs") / f"scene_{index_string}"
     output_dir = scene_dir / "mask_fusion"
 
     # Projected Helios -> RealSense .npz file

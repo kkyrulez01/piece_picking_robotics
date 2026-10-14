@@ -242,3 +242,9 @@ show_params_ranges ()
         fi
     done
 }
+
+# Display current camera settings
+show_params
+
+# Display important parameter descriptions and ranges
+show_params_ranges

@@ -22,10 +22,14 @@ from geometric_filters.boundary_filter import calculate_candidate_boundary_quali
 from geometric_filters.surface_geometry import build_object_surface_points, calculate_candidate_surface_geometry_quality
 from geometric_filters.footprint_filter import calculate_candidate_footprint_quality
 from geometric_filters.clearance_filter import calculate_candidate_clearance_quality
+from ament_index_python.packages import get_package_share_directory
 
-DEFAULT_REPOSITORY_PATH = "/home/support/unseen_sku_ws/external/Sim-Suction-API"
-DEFAULT_CHECKPOINT_PATH = "/home/support/unseen_sku_ws/external/Sim-Suction-API/Sim-Suction-Pointnet/models/MV_PCL_1550_500.model"
-DEFAULT_CONFIG_PATH = "/home/support/unseen_sku_ws/src/sim_suction_test/config/sim_suction_config.yaml"
+
+DEFAULT_CONFIG_PATH = str(
+    Path(get_package_share_directory("suction_scoring"))
+    / "config"
+    / "sim_suction_config.yaml"
+)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -182,7 +186,11 @@ def main():
     )
 
     # Sim-Suction output directory
-    sim_suction_root_dir = Path(output_config["directory"])
+    sim_suction_root_dir = (
+        Path(output_config["directory"])
+        .expanduser()
+        .resolve()
+    )
     sim_suction_output_dir = sim_suction_root_dir / f"scene_{scene_index:04d}" / "sim_suction"
     sim_suction_output_dir.mkdir(parents=True,exist_ok=True)
 

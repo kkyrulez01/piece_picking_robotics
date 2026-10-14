@@ -25,7 +25,12 @@ def parse_arguments():
 
     parser.add_argument(
         "--output-directory",
-        default="/home/support/unseen_sku_ws/data/foreground_pointclouds",
+        default=str(
+            Path.home()
+            / "unseen_sku_ws"
+            / "data"
+            / "foreground_pointclouds"
+        ),
         help="Directory in which to save the foreground .npy file.",
     )
 
