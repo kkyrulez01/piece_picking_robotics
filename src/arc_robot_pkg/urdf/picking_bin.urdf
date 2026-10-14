@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot name="picking_bin">
+  <!-- We make the base link a dummy link to anchor everything -->
+  <link name="bin_base_footprint"/>
+
+  <!-- Floor of the bin -->
+  <link name="bin_bottom">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.4 0.3 0.02"/></geometry>
+      <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="0.4 0.3 0.02"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Left Wall -->
+  <link name="wall_left">
+    <visual><geometry><box size="0.35 0.02 0.1"/></geometry></visual>
+    <collision><geometry><box size="0.35 0.02 0.1"/></geometry></collision>
+  </link>
+
+  <!-- Right Wall -->
+  <link name="wall_right">
+    <visual><geometry><box size="0.35 0.02 0.1"/></geometry></visual>
+    <collision><geometry><box size="0.35 0.02 0.1"/></geometry></collision>
+  </link>
+
+  <!-- Front Wall -->
+  <link name="wall_front">
+    <visual><geometry><box size="0.02 0.265 0.1"/></geometry></visual>
+    <collision><geometry><box size="0.02 0.265 0.1"/></geometry></collision>
+  </link>
+
+  <!-- Back Wall -->
+  <link name="wall_back">
+    <visual><geometry><box size="0.02 0.265 0.1"/></geometry></visual>
+    <collision><geometry><box size="0.02 0.265 0.1"/></geometry></collision>
+  </link>
+
+  <!-- JOINTS -->
+  <joint name="base_to_bottom" type="fixed">
+    <parent link="bin_base_footprint"/>
+    <child link="bin_bottom"/>
+    <origin xyz="0 0 0.01" rpy="0 0 1.5708"/>
+  </joint>
+
+  <joint name="bottom_to_left" type="fixed">
+    <parent link="bin_bottom"/>
+    <child link="wall_left"/>
+    <origin xyz="0 0.14 0.06" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="bottom_to_right" type="fixed">
+    <parent link="bin_bottom"/>
+    <child link="wall_right"/>
+    <origin xyz="0 -0.14 0.06" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="bottom_to_front" type="fixed">
+    <parent link="bin_bottom"/>
+    <child link="wall_front"/>
+    <origin xyz="0.19 0 0.06" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="bottom_to_back" type="fixed">
+    <parent link="bin_bottom"/>
+    <child link="wall_back"/>
+    <origin xyz="-0.19 0 0.06" rpy="0 0 0"/>
+  </joint>
+  
+  <gazebo reference="bin_bottom"><material>Gazebo/Grey</material></gazebo>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+  
+</robot>

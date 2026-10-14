@@ -1,0 +1,58 @@
+joint_convention_converter:
+  ros__parameters:
+
+    # Topics
+    # ARC -> unseen_sku
+    input_joint_states_topic: /joint_states
+    output_joint_states_topic: /unseen_sku/joint_states
+
+    # unseen_sku -> ARC
+    input_trajectory_topic: /unseen_sku/planned_joint_trajectory
+    output_trajectory_topic: /unseen_sku/ARC_joint_trajectory
+
+    # ARC robot joint names
+    arc_joint_names:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    
+    # Corresponding unseen_sku / MoveIt joint names
+    unseen_sku_joint_names:
+      - Revolute_1
+      - Revolute_2
+      - Revolute_3
+      - Revolute_4
+      - Revolute_5
+      - Revolute_6
+    
+    # unseen_sku = sign * ARC + offset
+    #
+    # Revolute_1 =  ARC_1
+    # Revolute_2 =  ARC_2 + pi/2
+    # Revolute_3 = -ARC_3
+    # Revolute_4 =  ARC_4 + pi/2
+    # Revolute_5 =  ARC_5
+    # Revolute_6 =  ARC_6
+
+    signs:
+      - 1.0
+      - 1.0
+      - -1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    
+    offsets:
+      - 0.0
+      - 1.5707963267948966 # Pi/2
+      - 0.0
+      - 1.5707963267948966
+      - 0.0
+      - 0.0
+    
+    wrap_unseen_sku_positions: true
+
+    max_state_age_sec: 0.5

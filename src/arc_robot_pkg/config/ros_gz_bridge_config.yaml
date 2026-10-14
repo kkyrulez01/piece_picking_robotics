@@ -1,0 +1,45 @@
+# Bridge rgbd_camera 
+- ros_topic_name: "/rgbd_camera/image"
+  gz_topic_name: "/rgbd_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/rgbd_camera/depth_image"
+  gz_topic_name: "/rgbd_camera/depth_image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/rgbd_camera/points"
+  gz_topic_name: "/rgbd_camera/points"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/rgbd_camera/camera_info"
+  gz_topic_name: "/rgbd_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+# Bridge Clock
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+# Bridge vac_gripper/switch
+- ros_topic_name: "/vac_gripper/switch"
+  gz_topic_name: "/vac_gripper/switch"
+  ros_type_name: "std_msgs/msg/Bool"
+  gz_type_name: "gz.msgs.Boolean"
+  direction: ROS_TO_GZ
+
+# Bridge synthetic segmentation camera
+- ros_topic_name: "/synthetic/instance_segmentation/labels_map"
+  gz_topic_name: "/synthetic/instance_segmentation/labels_map"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS

@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: arc_robot_pkg
+    relative_path: ARC_S6/ARC.urdf.xacro
+  srdf:
+    relative_path: config/ARC.srdf
+  package_settings:
+    author_name: Kang Kok Yoong
+    author_email: Kangkokyoong@studio3s.com.sg
+    generated_timestamp: 1791939393
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

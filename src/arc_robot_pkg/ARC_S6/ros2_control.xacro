@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="arc_ros2_control">
+        <ros2_control name="GazeboSimSystem" type="system">
+            <hardware>
+                <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+            </hardware>
+
+            <xacro:macro name="configure_joint" params="joint_name">
+                <joint name="${joint_name}">
+                    <command_interface name="position">
+                        <param name="min">-3.14</param>
+                        <param name="max">3.14</param>
+                    </command_interface>
+                    <state_interface name="position"/>
+                    <state_interface name="velocity"/>
+                </joint>
+            </xacro:macro>
+
+            <xacro:configure_joint joint_name="Revolute_1"/>
+            <xacro:configure_joint joint_name="Revolute_2"/>
+            <xacro:configure_joint joint_name="Revolute_3"/>
+            <xacro:configure_joint joint_name="Revolute_4"/>
+            <xacro:configure_joint joint_name="Revolute_5"/>
+            <xacro:configure_joint joint_name="Revolute_6"/>
+        </ros2_control>
+
+        <gazebo>
+            <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                <parameters>$(find arc_robot_pkg)/config/controllers.yaml</parameters>
+            </plugin>
+        </gazebo>
+
+    </xacro:macro>
+</robot>

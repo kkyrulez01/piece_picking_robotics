@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="add_vacuum_gripper" params="wrist_link topic_name:=/vac_gripper/switch">
+        <link name="vacuum_gripper_link">
+            <inertial>
+                <mass value="0.05"/>
+                <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
+            </inertial>
+            <visual>
+                <geometry>
+                    <cylinder radius="0.01" length="0.235"/>
+                </geometry>
+                <material name="black">
+                    <color rgba="0.1 0.1 0.1 1.0"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <cylinder radius="0.01" length="0.235"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <!-- TCP Frame-->
+        <!-- Place the centre of the 235mm gripper at 117.5mm away from wrist link-->
+        <joint name="${wrist_link}_to_suction" type="fixed">
+            <parent link="${wrist_link}"/> 
+            <child link="vacuum_gripper_link"/>
+            <origin xyz="0 -0.1175 0" rpy="1.5707 0 0"/> 
+        </joint>
+
+        <link name="vacuum_tcp"/>
+        
+        <joint name="vacuum_gripper_to_tcp" type="fixed">
+            <parent link="vacuum_gripper_link"/>
+            <child link="vacuum_tcp"/>
+            <!-- <origin xyz="0 -0.1175 0" rpy="0 0 0"/> -->
+            <origin xyz="0 0 0.139" rpy="0 0 3.14159"/>
+        </joint>
+
+        <gazebo>
+            <plugin filename="libVacuumGripperPlugin.so" name="custom_plugins::VacuumGripper">
+                <link_name>link_6_1</link_name>
+                <topic>${topic_name}</topic>
+            </plugin>
+        </gazebo>
+
+        <!-- Collision contact sensor-->
+        <!-- <gazebo reference="vacuum_gripper_link">
+            <sensor name="gripper_contact_sensor" type="contact">
+                <always_on>true</always_on>
+                <update_rate>50</update_rate>
+                <contact>
+                    <collision>vacuum_gripper_link_collision</collision> 
+                </contact>
+            </sensor>
+        </gazebo> -->
+
+    </xacro:macro>
+</robot>

@@ -1,0 +1,19 @@
+motion_planner_service_node:
+  ros__parameters:
+
+    # Robot / MoveIt
+    group_name: "ARC_S6"
+    base_frame: "base_link"
+    tcp_link: "vacuum_tcp"
+
+    # Planning pipeline
+    planning_pipeline: "pilz_industrial_motion_planner"
+    planning_time: 5.0
+    planning_attempts: 1
+
+    # Conservative real-robot speed settings
+    velocity_scaling: 0.50
+    acceleration_scaling: 0.10
+
+    # Planned trajectory output
+    trajectory_topic: "/unseen_sku/planned_joint_trajectory"
