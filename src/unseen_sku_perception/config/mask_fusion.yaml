@@ -3,7 +3,6 @@ mask_fusion_node:
 
     # Camera calibration
     helios_to_realsense_file: "~/unseen_sku_ws/tools/camera_calibration/calibration_data/helios_to_realsense_260922/helios_to_realsense_260922.npz"
-
     realsense_calibration_file: "~/unseen_sku_ws/tools/camera_calibration/calibration_data/realsense_D455f_260922/realsense_D455f_260922.npz"
 
     # Mask fusion

@@ -17,7 +17,7 @@ def generate_launch_description():
     # Package directories
     perception_share = FindPackageShare("unseen_sku_perception")
     camera_share = FindPackageShare("unseen_sku_camera")
-    suction_share = FindPackageShare("suction_scoring")
+    suction_share = FindPackageShare("unseen_sku_suction_scoring")
 
     # Config files
     realsense_config = PathJoinSubstitution([
@@ -29,7 +29,7 @@ def generate_launch_description():
     sam2_config = LaunchConfiguration("sam2_config")
     fusion_config = LaunchConfiguration("fusion_config")
     suction_config = LaunchConfiguration("suction_config")
-
+    candidate_transform_config = LaunchConfiguration("candidate_transform_config")
     # Launch RealSense
     realsense_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -90,8 +90,6 @@ def generate_launch_description():
         name="mask_fusion_node",
         output="screen",
 
-        prefix=LaunchConfiguration("fusion_python"),
-
         parameters=[
             fusion_config,
             {
@@ -105,7 +103,7 @@ def generate_launch_description():
 
     # NEW: Launch Sim-Suction node
     suction_node = Node(
-        package="suction_scoring",
+        package="unseen_sku_suction_scoring",
         executable="suction_node",
         name="suction_node",
         output="screen",
@@ -122,21 +120,19 @@ def generate_launch_description():
         }],
     )
 
+    # Candidate transform node
+    candidate_transform_node = Node(
+        package="unseen_sku_suction_scoring",
+        executable="candidate_transform_node",
+        name="candidate_transform_node",
+        output="screen",
+
+        parameters=[
+            candidate_transform_config,
+        ],
+    )
     return LaunchDescription([
         # Launch arguments
-
-        DeclareLaunchArgument(
-            "fusion_input_mode",
-            default_value="standalone",
-            choices=["standalone", "controlled"],
-        ),
-
-        DeclareLaunchArgument(
-            "suction_input_mode",
-            default_value="standalone",
-            choices=["standalone", "controlled"],
-        ),
-        
         DeclareLaunchArgument(
             "helios_config",
             default_value=PathJoinSubstitution([
@@ -144,6 +140,17 @@ def generate_launch_description():
                 "config",
                 "helios2.yaml",
             ])
+        ),
+        DeclareLaunchArgument(
+            "helios_python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "sam2",
+                "bin",
+                "python",
+            ]),
         ),
         DeclareLaunchArgument(
             "sam2_config",
@@ -162,6 +169,16 @@ def generate_launch_description():
             ])
         ),
         DeclareLaunchArgument(
+            "fusion_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
+        ),
+        DeclareLaunchArgument(
+            "suction_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
+        ),
+        DeclareLaunchArgument(
             "initial_scene_index",
             default_value="1",
         ),
@@ -174,7 +191,15 @@ def generate_launch_description():
                 "sim_suction_config.yaml",
             ])
         ),
-
+        # Candidate Transform configuration
+        DeclareLaunchArgument(
+            "candidate_transform_config",
+            default_value=PathJoinSubstitution([
+                FindPackageShare("unseen_sku_suction_scoring"),
+                "config",
+                "candidate_transform.yaml",
+            ]),
+        ),
         # Python environment for SAM2
         DeclareLaunchArgument(
             "sam2_python",
@@ -187,7 +212,6 @@ def generate_launch_description():
                 "python",
             ]),
         ),
-
         # Python environment for Sim-Suction
         DeclareLaunchArgument(
             "suction_python",
@@ -195,33 +219,7 @@ def generate_launch_description():
                 EnvironmentVariable("HOME"),
                 "unseen_sku_ws",
                 "venv",
-                "sim_suction",
-                "bin",
-                "python",
-            ]),
-        ),
-
-        # Helios2 Python environment
-        DeclareLaunchArgument(
-            "helios_python",
-            default_value=PathJoinSubstitution([
-                EnvironmentVariable("HOME"),
-                "unseen_sku_ws",
-                "venv",
-                "arena",
-                "bin",
-                "python",
-            ]),
-        ),
-
-        # Mask Fusion Python environment
-        DeclareLaunchArgument(
-            "fusion_python",
-            default_value=PathJoinSubstitution([
-                EnvironmentVariable("HOME"),
-                "unseen_sku_ws",
-                "venv",
-                "mask_fusion",
+                "sim_suction_venv",
                 "bin",
                 "python",
             ]),
@@ -233,5 +231,6 @@ def generate_launch_description():
         camera_tf_node,
         sam2_node,
         mask_fusion_node,
-        suction_node
+        suction_node,
+        candidate_transform_node
     ])

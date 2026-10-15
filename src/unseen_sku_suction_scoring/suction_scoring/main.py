@@ -26,7 +26,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 DEFAULT_CONFIG_PATH = str(
-    Path(get_package_share_directory("suction_scoring"))
+    Path(get_package_share_directory("unseen_sku_suction_scoring"))
     / "config"
     / "sim_suction_config.yaml"
 )

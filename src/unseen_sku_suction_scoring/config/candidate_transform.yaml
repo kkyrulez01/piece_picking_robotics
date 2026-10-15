@@ -1,0 +1,17 @@
+candidate_transform_node:
+  ros__parameters:
+
+    # Topics
+    input_topic: "/sim_suction/candidates"
+    output_topic: "/sim_suction/candidates_base"
+
+    # Coordinate frames
+    source_frame: "helios2_optical_frame"
+    target_frame: "base_link"
+
+    # TF availability
+    max_tf_wait_sec: 3.0
+    retry_period_sec: 0.1
+
+    # Timestamp validation
+    require_nonzero_stamp: false
