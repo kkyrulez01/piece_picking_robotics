@@ -5,6 +5,10 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from pathlib import Path
+
+output_dir = Path.home() / "unseen_sku_ws" / "outputs"
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # RealSense RGB ROI for depth comparison
 ROI_MIN_X = 510
@@ -109,7 +113,7 @@ def compare_depth(
     ]
 
     cv2.imwrite(
-        "/home/support/unseen_sku_ws/outputs/helios_coverage_before_zbuffer_roi.png",
+        str(output_dir / "helios_coverage_before_zbuffer_roi.png"),
         coverage_before_roi,
     )
 
@@ -131,8 +135,9 @@ def compare_depth(
         ROI_MIN_X:ROI_MAX_X,
     ]
 
+
     cv2.imwrite(
-        "/home/support/unseen_sku_ws/outputs/helios_coverage_roi.png",
+        str(output_dir / "helios_coverage_roi.png"),
         coverage_roi,
     )
 

@@ -1,0 +1,20 @@
+digraph G {
+"link_6_1" -> "vacuum_gripper_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"link_5_1" -> "link_6_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+"vacuum_gripper_link" -> "vacuum_tcp"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"world" -> "base_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"camera_link" -> "camera_depth_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"camera_depth_frame" -> "camera_depth_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"camera_link" -> "camera_color_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "camera_color_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "helios2_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "link_1_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+"link_1_1" -> "link_2_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+"link_2_1" -> "link_3_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+"link_3_1" -> "link_4_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+"link_4_1" -> "link_5_1"[label=" Broadcaster: default_authority\nAverage rate: 13.4\nBuffer length: 5.0\nMost recent transform: 1792032151.993743\nOldest transform: 1792032146.993848\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1792032152.000429"[ shape=plaintext ] ;
+}->"camera_link";
+}

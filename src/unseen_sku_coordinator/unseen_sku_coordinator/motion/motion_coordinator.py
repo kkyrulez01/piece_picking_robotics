@@ -1,4 +1,4 @@
-"""Plan ONE suction candidate through the existing C++ PlanCandidate service.
+"""Plan ONE suction candidate via the C++ PlanCandidate service.
 
 This is a helper owned/spun by the future main coordinator node, not a new
 ROS node. It NEVER publishes trajectories or sends execution goals.
@@ -16,267 +16,26 @@ Usage (from an already-spinning rclpy Node)::
 Keep spinning the parent node while waiting. Do NOT spin_until_future_complete
 from inside another ROS callback. Call cancel_scene(scene_id) when the BT
 abandons or replaces a scene; late service replies are ignored.
+
+Only MotionCoordinator is implemented in this module. The imported helpers and
+result types are also re-exported to preserve existing caller/test imports.
 """
 
-from dataclasses import dataclass
-from enum import Enum
 import math
 import threading
 import time
 from typing import Any, Optional
 
-from geometry_msgs.msg import PointStamped, Vector3Stamped
 from rclpy.task import Future
 from rclpy.time import Time
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from unseen_sku_motion_planning.srv import PlanCandidate
 
-
-JOINT_NAMES = tuple(f"Revolute_{index}" for index in range(1, 7))
-
-
-class MotionStatus(str, Enum):
-    """Classifies a *single* candidate-planning attempt."""
-
-    PLANNED = "planned"
-    INVALID_CANDIDATE = "invalid_candidate"
-    INVALID_REQUEST = "invalid_request"  # Invalid scene metadata/request, not rank-retryable.
-    STALE_CANDIDATE = "stale_candidate"
-    TF_UNAVAILABLE = "tf_unavailable"
-    SERVICE_UNAVAILABLE = "service_unavailable"
-    SERVICE_TIMEOUT = "service_timeout"
-    ROBOT_STATE_UNAVAILABLE = "robot_state_unavailable"
-    CANDIDATE_REJECTED = "candidate_rejected"
-    PLANNING_FAILED = "planning_failed"  # MoveIt cause unknown: do NOT auto-retry.
-    PLANNER_ERROR = "planner_error"
-    INVALID_RESPONSE = "invalid_response"
-    BUSY = "busy"
-    CANCELLED = "cancelled"
-
-
-@dataclass(frozen=True)
-class MotionResult:
-    """Return value for a single request; no robot movement is implied."""
-
-    status: MotionStatus
-    detail: str
-    scene_id: str
-    object_id: int
-    rank: int
-    suction_point_base: Optional[Any] = None
-    surface_normal_base: Optional[Any] = None
-    planning_response: Optional[Any] = None
-    failure_code: int = 0
-    failed_stage: str = ""
-    moveit_error_code: int = 0
-
-    @property
-    def success(self) -> bool:
-        return self.status == MotionStatus.PLANNED
-
-    @property
-    def retry_next_candidate(self) -> bool:
-        """Only a clearly candidate-specific rejection permits rank fallback.
-
-        An unclassified MoveIt PLANNING_FAILED result is non-retryable.
-        A specific NO_IK_SOLUTION / GOAL_IN_COLLISION result may be retryable,
-        but only when explicitly categorized by the C++ planner.
-        """
-        return self.status in (
-            MotionStatus.INVALID_CANDIDATE,
-            MotionStatus.CANDIDATE_REJECTED,
-        )
-
-
-@dataclass
-class _Attempt:
-    candidate: Any
-    header: Any
-    scene_id: str
-    output: Future
-    phase: str
-    deadline: float
-    point_base: Optional[Any] = None
-    normal_base: Optional[Any] = None
-    request_future: Optional[Any] = None
-    last_tf_error: str = ""
-
-
-def _xyz(value: Any) -> tuple:
-    return (float(value.x), float(value.y), float(value.z))
-
-
-def _normalized(vector: tuple) -> tuple:
-    if not all(math.isfinite(v) for v in vector):
-        raise ValueError("nonfinite surface normal")
-    length = math.sqrt(sum(v * v for v in vector))
-    if length < 1e-6:
-        raise ValueError("surface normal has near-zero magnitude")
-    return tuple(v / length for v in vector)
-
-
-def _rotate(vector: tuple, quaternion: Any) -> tuple:
-    """Rotate a 3-vector by a normalized TF quaternion (xyzw)."""
-    x, y, z, w = (
-        float(quaternion.x), float(quaternion.y),
-        float(quaternion.z), float(quaternion.w),
-    )
-    if not all(math.isfinite(v) for v in (x, y, z, w)):
-        raise ValueError("TF quaternion contains nonfinite values")
-    length = math.sqrt(x*x + y*y + z*z + w*w)
-    if length < 1e-9:
-        raise ValueError("TF quaternion has zero magnitude")
-    x, y, z, w = (x/length, y/length, z/length, w/length)
-    vx, vy, vz = vector
-    # v' = v + w*t + cross(q.xyz, t), t = 2*cross(q.xyz, v).
-    tx, ty, tz = (
-        2.0 * (y*vz - z*vy),
-        2.0 * (z*vx - x*vz),
-        2.0 * (x*vy - y*vx),
-    )
-    return (
-        vx + w*tx + y*tz - z*ty,
-        vy + w*ty + z*tx - x*tz,
-        vz + w*tz + x*ty - y*tx,
-    )
-
-
-def transform_candidate(candidate: Any, header: Any, target_frame: str,
-                        tf_transform: Optional[Any] = None) -> tuple:
-    """Build PointStamped and Vector3Stamped in target_frame.
-
-    tf_transform is a geometry_msgs/Transform (or None for identity). Only the
-    POINT is translated. The surface NORMAL is rotated and renormalized.
-    Capture timestamp is preserved for the downstream planning request.
-    """
-    position = _xyz(candidate.position)
-    normal = _normalized(_xyz(candidate.normal))
-    if not all(math.isfinite(v) for v in position):
-        raise ValueError("nonfinite candidate position")
-    if tf_transform is None:
-        transformed_position, transformed_normal = position, normal
-    else:
-        rotated_point = _rotate(position, tf_transform.rotation)
-        transformed_position = tuple(
-            a + b for a, b in zip(rotated_point, _xyz(tf_transform.translation))
-        )
-        transformed_normal = _normalized(_rotate(normal, tf_transform.rotation))
-    if not all(math.isfinite(v) for v in transformed_position):
-        raise ValueError("transformed candidate position is nonfinite")
-
-    point = PointStamped()
-    point.header.frame_id = target_frame
-    point.header.stamp = header.stamp
-    point.point.x, point.point.y, point.point.z = transformed_position
-    vector = Vector3Stamped()
-    vector.header.frame_id = target_frame
-    vector.header.stamp = header.stamp
-    vector.vector.x, vector.vector.y, vector.vector.z = transformed_normal
-    return point, vector
-
-
-def _seconds(duration: Any) -> float:
-    if duration.sec < 0 or duration.nanosec < 0 or duration.nanosec >= 1_000_000_000:
-        raise ValueError("invalid trajectory timestamp")
-    return float(duration.sec) + float(duration.nanosec) * 1e-9
-
-
-def validate_plan_response(response: Any, point: Any, normal: Any,
-                           target_frame: str = "base_link") -> None:
-    """Raise ValueError if a successful C++ response is structurally invalid.
-
-    Checks nonempty 6-joint trajectories, finite arrays, increasing timestamps,
-    zero terminal velocities, segment continuity, and matching target poses.
-    This does not establish obstacle clearance or physical execution safety.
-    """
-    trajectories = (
-        response.pre_pick_trajectory,
-        response.pick_trajectory,
-        response.retract_trajectory,
-    )
-    canonical_names = None
-    for label, trajectory in zip(("PRE_PICK", "PICK", "RETRACT"), trajectories):
-        names = list(trajectory.joint_names)
-        if len(names) != 6 or len(set(names)) != 6 or set(names) != set(JOINT_NAMES):
-            raise ValueError(f"{label}: unexpected joint names")
-        if canonical_names is None:
-            canonical_names = names
-        elif names != canonical_names:
-            raise ValueError(f"{label}: joint order differs between stages")
-        if not trajectory.points:
-            raise ValueError(f"{label}: empty trajectory")
-        last_t = -1.0
-        for waypoint in trajectory.points:
-            t = _seconds(waypoint.time_from_start)
-            if t <= last_t:
-                raise ValueError(f"{label}: timestamps not strictly increasing")
-            last_t = t
-            if len(waypoint.positions) != 6 or not all(
-                math.isfinite(v) for v in waypoint.positions
-            ):
-                raise ValueError(f"{label}: invalid joint positions")
-            for field in ("velocities", "accelerations", "effort"):
-                values = getattr(waypoint, field)
-                if values and (len(values) != 6 or not all(math.isfinite(v) for v in values)):
-                    raise ValueError(f"{label}: invalid {field}")
-        last_velocity = trajectory.points[-1].velocities
-        if last_velocity and any(abs(v) > 1e-3 for v in last_velocity):
-            raise ValueError(f"{label}: nonzero terminal velocity")
-
-    for previous, following in zip(trajectories, trajectories[1:]):
-        end = previous.points[-1].positions
-        start = following.points[0].positions
-        if max(abs(a-b) for a, b in zip(end, start)) > 1e-3:
-            raise ValueError("trajectory stages are not joint-continuous")
-
-    poses = (response.pre_pick_pose, response.pick_pose, response.retract_pose)
-    for label, pose in zip(("PRE_PICK", "PICK", "RETRACT"), poses):
-        if pose.header.frame_id != target_frame:
-            raise ValueError(f"{label}: unexpected pose frame")
-        if not all(math.isfinite(v) for v in _xyz(pose.pose.position)):
-            raise ValueError(f"{label}: nonfinite target position")
-        quaternion = pose.pose.orientation
-        qvalues = (quaternion.x, quaternion.y, quaternion.z, quaternion.w)
-        if not all(math.isfinite(v) for v in qvalues) or abs(
-            math.sqrt(sum(v*v for v in qvalues)) - 1.0
-        ) > 1e-3:
-            raise ValueError(f"{label}: invalid target orientation")
-
-    pick_position = _xyz(response.pick_pose.pose.position)
-    if max(abs(a-b) for a, b in zip(pick_position, _xyz(point.point))) > 1e-4:
-        raise ValueError("pick pose does not match requested contact point")
-    outward = _xyz(normal.vector)
-    tool_z = _rotate((0.0, 0.0, 1.0), response.pick_pose.pose.orientation)
-    if sum(a*b for a, b in zip(tool_z, outward)) > -0.999:
-        raise ValueError("pick TCP +Z is not opposite the outward normal")
-    for label, pose in (("PRE_PICK", response.pre_pick_pose),
-                        ("RETRACT", response.retract_pose)):
-        offset = tuple(a-b for a, b in zip(_xyz(pose.pose.position), pick_position))
-        along = sum(a*b for a, b in zip(offset, outward))
-        lateral = math.sqrt(sum((a - along*b)**2 for a, b in zip(offset, outward)))
-        if along < 1e-4 or lateral > 1e-3:
-            raise ValueError(f"{label}: incorrect surface-normal offset")
-
-
-def _classify_planner_rejection(response: Any) -> MotionStatus:
-    """Map structured ROS failure_code to MotionStatus; never parse message text.
-
-    Unknown codes, missing fields, or FAILURE_NONE with success=False fail
-    closed as PLANNER_ERROR (never cause automatic rank fallback).
-    """
-    codes = PlanCandidate.Response
-    status_by_code = {
-        codes.FAILURE_INVALID_REQUEST: MotionStatus.INVALID_REQUEST,
-        codes.FAILURE_INVALID_CANDIDATE: MotionStatus.INVALID_CANDIDATE,
-        codes.FAILURE_CANDIDATE_INFEASIBLE: MotionStatus.CANDIDATE_REJECTED,
-        codes.FAILURE_ROBOT_STATE_UNAVAILABLE: MotionStatus.ROBOT_STATE_UNAVAILABLE,
-        codes.FAILURE_PLANNING_FAILED_UNKNOWN: MotionStatus.PLANNING_FAILED,
-        codes.FAILURE_PLANNER_ERROR: MotionStatus.PLANNER_ERROR,
-        codes.FAILURE_INVALID_TRAJECTORY: MotionStatus.INVALID_RESPONSE,
-    }
-    return status_by_code.get(getattr(response, "failure_code", None),
-                              MotionStatus.PLANNER_ERROR)
+from .candidate_transform import _normalized, _rotate, _xyz, transform_candidate
+from .motion_types import _Attempt, MotionResult, MotionStatus
+from .planner_failure import _classify_planner_rejection
+from .trajectory_validation import JOINT_NAMES, _seconds, validate_plan_response
 
 
 class MotionCoordinator:
