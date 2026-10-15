@@ -1,0 +1,25 @@
+# The supplied suction_result.candidates.header.frame_id MUST be base_link.
+# The caller must supply the validated SuctionResult obtained from
+# /perception_coordinator/get_scene_result for the exact expected_scene_id.
+# The BT/main coordinator selects target_object_id; this action never selects
+# a different object, and never executes trajectories.
+string expected_scene_id
+uint32 target_object_id
+unseen_sku_interfaces/SuctionResult suction_result
+---
+# status matches CandidatePlanningStatus.value.
+bool success
+string status
+string detail
+string scene_id
+uint32 scene_index
+uint32 target_object_id
+uint32 selected_rank
+std_msgs/Header candidate_header
+unseen_sku_interfaces/SuctionCandidate selected_candidate
+unseen_sku_interfaces/CandidatePlanningAttempt[] attempts
+unseen_sku_interfaces/PickPlan plan
+---
+string phase
+uint32 current_rank
+uint32 attempts_completed

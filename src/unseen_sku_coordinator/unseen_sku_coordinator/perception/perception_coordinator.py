@@ -32,6 +32,7 @@ REQUIRED_PARAMETERS = (
     # Sim-Suction
     "suction_input_topic",
     "suction_result_topic",
+    "suction_result_frame",
     "enable_suction_scoring",
 
     "capture_timeout_sec",
@@ -160,6 +161,12 @@ class PerceptionCoordinator(Node):
             )
 
         # Validate suction-scoring configuration.
+
+        if self.settings["suction_result_frame"] != "base_link":
+            raise ValueError(
+                "Perception Coordinator must receive transformed base_link "
+                "suction results from the upstream Candidate Transform Node"
+            )
 
         if type(self.settings["enable_suction_scoring"]) is not bool:
             raise ValueError(

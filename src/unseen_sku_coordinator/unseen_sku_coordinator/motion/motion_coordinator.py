@@ -3,9 +3,9 @@
 This is a helper owned/spun by the future main coordinator node, not a new
 ROS node. It NEVER publishes trajectories or sends execution goals.
 
-The caller must provide a validated SuctionCandidate, its parent array's
-Header (frame + capture stamp), and the matching perception scene_id. Ranked
-fallback is intentionally NOT implemented here.
+The caller must provide an upstream-transformed base_link SuctionCandidate,
+its parent array's Header (base_link + capture stamp), and matching scene_id.
+Ranked fallback is intentionally NOT implemented here.
 
 Usage (from an already-spinning rclpy Node)::
 
@@ -17,22 +17,19 @@ Keep spinning the parent node while waiting. Do NOT spin_until_future_complete
 from inside another ROS callback. Call cancel_scene(scene_id) when the BT
 abandons or replaces a scene; late service replies are ignored.
 
-Only MotionCoordinator is implemented in this module. The imported helpers and
-result types are also re-exported to preserve existing caller/test imports.
+Only MotionCoordinator is defined in this module. Planning result types and
+validation helpers remain re-exported for existing callers.
 """
 
-import math
 import threading
 import time
 from typing import Any, Optional
 
 from rclpy.task import Future
-from rclpy.time import Time
-from tf2_ros import Buffer, TransformException, TransformListener
 
 from unseen_sku_motion_planning.srv import PlanCandidate
 
-from .candidate_transform import _normalized, _rotate, _xyz, transform_candidate
+from .candidate_geometry import _normalized, _rotate, _xyz, prepare_base_candidate
 from .motion_types import _Attempt, MotionResult, MotionStatus
 from .planner_failure import _classify_planner_rejection
 from .trajectory_validation import JOINT_NAMES, _seconds, validate_plan_response
@@ -41,6 +38,7 @@ from .trajectory_validation import JOINT_NAMES, _seconds, validate_plan_response
 class MotionCoordinator:
     """Asynchronous, planning-only ROS adapter for *one candidate at a time*.
 
+    Receives only pre-transformed base-frame candidates. Never calls TF2.
     Call from a normally spun rclpy Node; the node's executor must keep running.
     The coordinator uses short nonblocking timer ticks rather than waiting for
     TF or ROS services inside a callback. Only one pending PlanCandidate request
@@ -48,24 +46,18 @@ class MotionCoordinator:
     before another request can start (it cannot be cancelled by this interface).
     """
 
-    def __init__(self, node: Any, *, tf_buffer: Optional[Any] = None,
-                 base_frame: str = "base_link",
+    def __init__(self, node: Any, *, base_frame: str = "base_link",
                  service_name: str = "/unseen_sku/plan_candidate",
                  max_candidate_age_sec: Optional[float] = 30.0,
-                 tf_wait_timeout_sec: float = 3.0,
                  service_wait_timeout_sec: float = 5.0,
                  planning_timeout_sec: float = 60.0):
+        if base_frame != "base_link":
+            raise ValueError("C++ PlanCandidate requires base_link input")
         self.node = node
         self.base_frame = base_frame
         self.max_candidate_age_sec = max_candidate_age_sec
-        self.tf_wait_timeout_sec = tf_wait_timeout_sec
         self.service_wait_timeout_sec = service_wait_timeout_sec
         self.planning_timeout_sec = planning_timeout_sec
-        self.tf_buffer = tf_buffer if tf_buffer is not None else Buffer()
-        self._tf_listener = (
-            TransformListener(self.tf_buffer, node, spin_thread=False)
-            if tf_buffer is None else None
-        )
         self._client = node.create_client(PlanCandidate, service_name)
         self._lock = threading.RLock()
         self._active = None
@@ -115,15 +107,19 @@ class MotionCoordinator:
             try:
                 if not header.frame_id or not header.frame_id.strip():
                     raise ValueError("candidate frame_id is empty")
+                if header.frame_id != self.base_frame:
+                    raise ValueError(
+                        f"expected pre-transformed {self.base_frame} candidates; "
+                        f"received {header.frame_id!r}"
+                    )
                 if _seconds(header.stamp) <= 0:
                     raise ValueError("missing capture timestamp")
             except (ValueError, TypeError, AttributeError) as exc:
                 return complete(MotionStatus.INVALID_REQUEST, str(exc))
             try:
-                position = _xyz(candidate.position)
-                _normalized(_xyz(candidate.normal))
-                if not all(math.isfinite(v) for v in position):
-                    raise ValueError("nonfinite suction position")
+                point, normal = prepare_base_candidate(
+                    candidate, header, self.base_frame
+                )
             except (ValueError, TypeError, AttributeError) as exc:
                 return complete(MotionStatus.INVALID_CANDIDATE, str(exc))
             age_error = self._capture_age_error(header)
@@ -132,8 +128,9 @@ class MotionCoordinator:
 
             self._active = _Attempt(
                 candidate=candidate, header=header, scene_id=scene_id,
-                output=result_future, phase="wait_tf",
-                deadline=time.monotonic() + self.tf_wait_timeout_sec,
+                output=result_future, phase="wait_service",
+                deadline=time.monotonic() + self.service_wait_timeout_sec,
+                point_base=point, normal_base=normal,
             )
             # Try immediately. Pending work advances on subsequent timer ticks.
             self._tick()
@@ -185,34 +182,6 @@ class MotionCoordinator:
         if attempt is None:
             return
         now = time.monotonic()
-        if attempt.phase == "wait_tf":
-            try:
-                if attempt.header.frame_id == self.base_frame:
-                    tf = None
-                else:
-                    tf = self.tf_buffer.lookup_transform(
-                        self.base_frame,
-                        attempt.header.frame_id,
-                        Time.from_msg(attempt.header.stamp),
-                    ).transform
-                attempt.point_base, attempt.normal_base = transform_candidate(
-                    attempt.candidate, attempt.header, self.base_frame, tf
-                )
-                attempt.phase = "wait_service"
-                attempt.deadline = now + self.service_wait_timeout_sec
-            except TransformException as exc:
-                attempt.last_tf_error = str(exc)
-                if now >= attempt.deadline:
-                    self._finish_locked(attempt, MotionStatus.TF_UNAVAILABLE,
-                                        f"TF at capture stamp unavailable: {exc}")
-                return
-            except ValueError as exc:
-                # Geometry was validated before entering this state. An invalid
-                # TF quaternion/translation is a frame-system problem, not an
-                # unreachable suction candidate.
-                self._finish_locked(attempt, MotionStatus.TF_UNAVAILABLE, str(exc))
-                return
-
         if attempt.phase == "wait_service":
             age_error = self._capture_age_error(attempt.header)
             if age_error:

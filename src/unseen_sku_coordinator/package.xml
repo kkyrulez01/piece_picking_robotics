@@ -8,6 +8,8 @@
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
+  <depend>action_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>std_srvs</depend>
   <depend>sensor_msgs</depend>
   <depend>realsense2_camera_msgs</depend>

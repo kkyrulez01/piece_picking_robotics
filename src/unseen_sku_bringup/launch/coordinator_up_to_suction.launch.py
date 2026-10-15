@@ -38,6 +38,7 @@ def generate_launch_description():
     camera_share = FindPackageShare("unseen_sku_camera")
     perception_share = FindPackageShare("unseen_sku_perception")
     coordinator_share = FindPackageShare("unseen_sku_coordinator")
+    suction_share = FindPackageShare("unseen_sku_suction_scoring")
 
     launch_arguments = [
         DeclareLaunchArgument(
@@ -56,6 +57,12 @@ def generate_launch_description():
             "suction_config",
             default_value=PathJoinSubstitution([
                 workspace, "local_config", "sim_suction_config_local.yaml"
+            ]),
+        ),
+        DeclareLaunchArgument(
+            "candidate_transform_config",
+            default_value=PathJoinSubstitution([
+                suction_share, "config", "candidate_transform.yaml"
             ]),
         ),
         DeclareLaunchArgument(
@@ -137,7 +144,7 @@ def generate_launch_description():
     )
 
     suction_node = Node(
-        package="suction_scoring",
+        package="unseen_sku_suction_scoring",
         executable="suction_node",
         name="suction_node",
         output="screen",
@@ -146,6 +153,26 @@ def generate_launch_description():
             "config_path": LaunchConfiguration("suction_config"),
             "input_mode": "controlled",
         }],
+    )
+
+    # The upstream transformation operates on SuctionResult, not the raw
+    # candidate topic. This preserves scene_id for Perception Coordinator.
+    candidate_transform_node = Node(
+        package="unseen_sku_suction_scoring",
+        executable="candidate_transform_node",
+        name="candidate_transform_node",
+        output="screen",
+        parameters=[
+            LaunchConfiguration("candidate_transform_config"),
+            {
+                "message_type": "suction_result",
+                "input_topic": "/sim_suction/result",
+                "output_topic": "/sim_suction/result_base",
+                "source_frame": "helios2_optical_frame",
+                "target_frame": "base_link",
+                "require_nonzero_stamp": True,
+            },
+        ],
     )
 
     coordinator_node = Node(
@@ -166,5 +193,6 @@ def generate_launch_description():
         sam2_node,
         fusion_node,
         suction_node,
+        candidate_transform_node,
         coordinator_node,
     ])

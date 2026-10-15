@@ -8,10 +8,9 @@ python3 -m unittest discover -s src/unseen_sku_coordinator/test \
 import math
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
 
 from builtin_interfaces.msg import Duration as DurationMsg, Time as TimeMsg
-from geometry_msgs.msg import PoseStamped, Transform
+from geometry_msgs.msg import PoseStamped
 from rclpy.task import Future
 from std_msgs.msg import Header
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -24,9 +23,8 @@ from unseen_sku_coordinator.motion.motion_coordinator import (
     MotionResult,
     MotionStatus,
     _classify_planner_rejection,
-    transform_candidate,
+    prepare_base_candidate,
     validate_plan_response,
-    TransformException,
 )
 
 
@@ -45,19 +43,9 @@ def candidate():
 
 def header():
     h = Header()
-    h.frame_id = 'helios2_optical_frame'
+    h.frame_id = 'base_link'
     h.stamp = TimeMsg(sec=1791976782, nanosec=982296653)
     return h
-
-
-def transform():
-    tf = Transform()
-    tf.translation.x = 1.0
-    tf.translation.y = 2.0
-    tf.translation.z = 3.0
-    tf.rotation.z = math.sqrt(0.5)
-    tf.rotation.w = math.sqrt(0.5)
-    return tf
 
 
 def valid_response(point, normal):
@@ -105,63 +93,63 @@ def valid_response(point, normal):
 
 
 class TestMotionGeometry(unittest.TestCase):
-    def test_point_rotated_and_translated_normal_only_rotated(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link', transform())
+    def test_base_candidate_is_copied_without_tf(self):
+        point, normal = prepare_base_candidate(candidate(), header())
         self.assertAlmostEqual(point.point.x, 1.0)
-        self.assertAlmostEqual(point.point.y, 3.0)
-        self.assertAlmostEqual(point.point.z, 3.0)
-        self.assertAlmostEqual(normal.vector.x, 0.0, places=6)
-        self.assertAlmostEqual(normal.vector.y, 1.0, places=6)
-        self.assertAlmostEqual(normal.vector.z, 0.0, places=6)
+        self.assertAlmostEqual(point.point.y, 0.0)
+        self.assertAlmostEqual(point.point.z, 0.0)
+        self.assertAlmostEqual(normal.vector.x, 1.0)
+        self.assertAlmostEqual(normal.vector.y, 0.0)
+        self.assertAlmostEqual(normal.vector.z, 0.0)
+        self.assertEqual(point.header.frame_id, 'base_link')
         self.assertEqual(point.header.stamp, header().stamp)
 
     def test_invalid_normal(self):
         c = candidate()
         c.normal.x = 0.0
         with self.assertRaises(ValueError):
-            transform_candidate(c, header(), 'base_link', transform())
+            prepare_base_candidate(c, header())
 
-    def test_bad_transform_rotation(self):
-        bad_tf = transform()
-        bad_tf.rotation.z = 0.0
-        bad_tf.rotation.w = 0.0
-        with self.assertRaises(ValueError):
-            transform_candidate(candidate(), header(), 'base_link', bad_tf)
+    def test_geometry_rejects_camera_frame(self):
+        camera_header = header()
+        camera_header.frame_id = 'helios2_optical_frame'
+        with self.assertRaisesRegex(ValueError, 'upstream candidate transformation'):
+            prepare_base_candidate(candidate(), camera_header)
 
     def test_valid_trajectories(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link', None)
+        point, normal = prepare_base_candidate(candidate(), header())
         validate_plan_response(valid_response(point, normal), point, normal)
 
     def test_joint_discontinuity_is_rejected(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link', None)
+        point, normal = prepare_base_candidate(candidate(), header())
         response = valid_response(point, normal)
         response.pick_trajectory.points[0].positions[0] += 0.01
         with self.assertRaisesRegex(ValueError, 'joint-continuous'):
             validate_plan_response(response, point, normal)
 
     def test_bad_joint_order_rejected(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link', None)
+        point, normal = prepare_base_candidate(candidate(), header())
         response = valid_response(point, normal)
         response.pick_trajectory.joint_names = list(reversed(JOINT_NAMES))
         with self.assertRaisesRegex(ValueError, 'joint order'):
             validate_plan_response(response, point, normal)
 
     def test_nonincreasing_timestamp_is_rejected(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link')
+        point, normal = prepare_base_candidate(candidate(), header())
         response = valid_response(point, normal)
         response.pick_trajectory.points[-1].time_from_start = DurationMsg(sec=0)
         with self.assertRaisesRegex(ValueError, 'timestamps not strictly increasing'):
             validate_plan_response(response, point, normal)
 
     def test_nonzero_terminal_velocity_is_rejected(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link')
+        point, normal = prepare_base_candidate(candidate(), header())
         response = valid_response(point, normal)
         response.retract_trajectory.points[-1].velocities[0] = 0.02
         with self.assertRaisesRegex(ValueError, 'nonzero terminal velocity'):
             validate_plan_response(response, point, normal)
 
     def test_wrong_pick_orientation_is_rejected(self):
-        point, normal = transform_candidate(candidate(), header(), 'base_link')
+        point, normal = prepare_base_candidate(candidate(), header())
         response = valid_response(point, normal)
         response.pick_pose.pose.orientation.x = 0.0
         response.pick_pose.pose.orientation.y = 0.0
@@ -252,31 +240,25 @@ class FakeNode:
         return self.clock
 
 
-class FakeBuffer:
-    def __init__(self, tf):
-        self.tf = tf
-        self.lookups = []
-
-    def lookup_transform(self, target, source, timestamp):
-        self.lookups.append((target, source, timestamp))
-        return SimpleNamespace(transform=self.tf)
-
-
 class TestMotionAdapter(unittest.TestCase):
     def setUp(self):
         self.node = FakeNode(header().stamp)
-        self.buffer = FakeBuffer(transform())
-        self.motion = MotionCoordinator(self.node, tf_buffer=self.buffer)
+        self.motion = MotionCoordinator(self.node)
 
     def tearDown(self):
         self.motion.close()
+
+    def test_non_base_planner_frame_configuration_rejected(self):
+        with self.assertRaisesRegex(ValueError, "requires base_link"):
+            MotionCoordinator(self.node, base_frame="robot_base")
 
     def test_plan_async_returns_validated_response(self):
         result_future = self.motion.plan_candidate_async(candidate(), header(), 'scene-001')
         self.assertFalse(result_future.done())
         self.assertEqual(len(self.node.client.requests), 1)
-        self.assertEqual(self.buffer.lookups[0][0:2],
-                         ('base_link', 'helios2_optical_frame'))
+        self.assertEqual(self.node.client.requests[0].suction_point.header.frame_id,
+                         'base_link')
+        self.assertEqual(self.node.client.requests[0].suction_point.point.x, 1.0)
         request = self.node.client.requests[0]
         response = valid_response(request.suction_point, request.surface_normal)
         self.node.client.future.set_result(response)
@@ -309,11 +291,13 @@ class TestMotionAdapter(unittest.TestCase):
         self.motion._tick()
         self.assertEqual(result_future.result().status, MotionStatus.CANCELLED)
 
-    def test_missing_tf_rejected_without_service_request(self):
-        self.motion.tf_wait_timeout_sec = 0.0
-        self.buffer.lookup_transform = Mock(side_effect=TransformException('not connected'))
-        result = self.motion.plan_candidate_async(candidate(), header(), 'scene-001').result()
-        self.assertEqual(result.status, MotionStatus.TF_UNAVAILABLE)
+    def test_camera_frame_rejected_without_service_request(self):
+        raw_header = header()
+        raw_header.frame_id = 'helios2_optical_frame'
+        result = self.motion.plan_candidate_async(
+            candidate(), raw_header, 'scene-001').result()
+        self.assertEqual(result.status, MotionStatus.INVALID_REQUEST)
+        self.assertFalse(result.retry_next_candidate)
         self.assertFalse(self.node.client.requests)
 
     def test_unavailable_service_times_out(self):

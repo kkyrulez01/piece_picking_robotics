@@ -71,4 +71,3 @@ class _Attempt:
     point_base: Optional[Any] = None
     normal_base: Optional[Any] = None
     request_future: Optional[Any] = None
-    last_tf_error: str = ""

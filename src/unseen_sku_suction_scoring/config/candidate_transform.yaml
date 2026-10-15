@@ -1,6 +1,11 @@
 candidate_transform_node:
   ros__parameters:
 
+    # Legacy array mode remains the default for up_to_suction.launch.py.
+    # Coordinator bringup overrides this to suction_result and uses the
+    # scene-correlated /sim_suction/result -> /sim_suction/result_base topics.
+    message_type: "candidate_array"
+
     # Topics
     input_topic: "/sim_suction/candidates"
     output_topic: "/sim_suction/candidates_base"

@@ -43,7 +43,7 @@ def suction_scene(candidates=(), *, scene_id="scene-42", status="OK"):
     array.scene_index = 42
     array.status = status
     array.header = Header()
-    array.header.frame_id = "helios2_optical_frame"
+    array.header.frame_id = "base_link"
     array.header.stamp.sec = 1791976782
     array.header.stamp.nanosec = 123456789
     array.candidates = list(candidates)
@@ -202,6 +202,13 @@ class TestCandidatePlanningCoordinator(unittest.TestCase):
         self.assertEqual(outcome.status, CandidatePlanningStatus.INVALID_REQUEST)
         self.assertEqual(motion.calls, [])
 
+    def test_raw_helios_frame_rejected_without_planning(self):
+        scene = suction_scene([candidate(2, 1)])
+        scene.candidates.header.frame_id = "helios2_optical_frame"
+        outcome, motion = self.run_plan(scene, [])
+        self.assertEqual(outcome.status, CandidatePlanningStatus.INVALID_REQUEST)
+        self.assertFalse(motion.calls)
+
     def test_empty_expected_scene_id_rejected(self):
         planner = CandidatePlanningCoordinator(FakeMotionCoordinator())
         output = planner.plan_object_async(
@@ -253,7 +260,7 @@ class TestCandidatePlanningCoordinator(unittest.TestCase):
         scene.candidates.header.frame_id = ""
         outcome, _ = self.run_plan(scene, [])
         self.assertEqual(outcome.status, CandidatePlanningStatus.INVALID_REQUEST)
-        scene.candidates.header.frame_id = "helios2_optical_frame"
+        scene.candidates.header.frame_id = "base_link"
         scene.candidates.header.stamp.sec = 0
         scene.candidates.header.stamp.nanosec = 0
         outcome, _ = self.run_plan(scene, [])
@@ -369,7 +376,7 @@ class TestCandidatePlanningCoordinator(unittest.TestCase):
         scene.candidates.candidates[0].rank = 99
         scene.candidates.header.frame_id = "wrong_frame"
         self.assertEqual(motion.calls[0][0].rank, 1)
-        self.assertEqual(motion.calls[0][1].frame_id, "helios2_optical_frame")
+        self.assertEqual(motion.calls[0][1].frame_id, "base_link")
         pending.set_result(motion_result(1))
         self.assertEqual(future.result().selected_rank, 1)
 

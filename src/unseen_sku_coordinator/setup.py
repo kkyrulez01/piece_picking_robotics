@@ -41,6 +41,10 @@ setup(
             "perception_coordinator = "
             "unseen_sku_coordinator.perception."
             "perception_coordinator:main",
+            "motion_coordinator_node = "
+            "unseen_sku_coordinator.motion.motion_coordinator_node:main",
+            "candidate_planning_coordinator_node = "
+            "unseen_sku_coordinator.candidate.candidate_planning_coordinator_node:main",
         ],
     },
 )

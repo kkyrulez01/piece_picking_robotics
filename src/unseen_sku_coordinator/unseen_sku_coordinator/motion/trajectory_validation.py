@@ -6,7 +6,7 @@ This does NOT prove collision clearance or physical execution safety.
 import math
 from typing import Any
 
-from .candidate_transform import _rotate, _xyz
+from .candidate_geometry import _rotate, _xyz
 
 
 JOINT_NAMES = tuple(f"Revolute_{index}" for index in range(1, 7))

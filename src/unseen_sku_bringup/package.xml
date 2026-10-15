@@ -9,6 +9,7 @@
 
   <depend>launch</depend>
   <depend>launch_ros</depend>
+  <exec_depend>unseen_sku_suction_scoring</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -76,6 +76,7 @@ def make_workflow(*, scoring=True):
         "enable_suction_scoring": scoring,
         "fusion_timeout_sec": 20.0,
         "scoring_timeout_sec": 60.0,
+        "suction_result_frame": "base_link",
     }
     tx = SceneTransaction(manager, settings, FakeLogger())
     tx.scene = SceneContext()
@@ -120,7 +121,7 @@ def valid_candidate(*, object_id=7, rank=1):
 
 
 def make_suction_result(tx, *, status="OK"):
-    return NS(
+    result = NS(
         scene_id=tx.scene.scene_id,
         candidates=NS(
             header=header(tx._selected_cloud.stamp),
@@ -132,6 +133,8 @@ def make_suction_result(tx, *, status="OK"):
             candidates=[valid_candidate()] if status == "OK" else [],
         ),
     )
+    result.candidates.header.frame_id = "base_link"
+    return result
 
 
 def prepared_suction():
@@ -275,9 +278,9 @@ class TestFusionToSuctionWorkflow(unittest.TestCase):
             "scene_index": (lambda r: setattr(r.candidates, "scene_index", 999),
                             "scene_index mismatch: expected=12; received=999"),
             "frame": (lambda r: setattr(r.candidates.header, "frame_id", "bad"),
-                      "SuctionCandidateArray header does not match the approved Helios2 cloud"),
+                      "SuctionCandidateArray must be in base_link; received 'bad'"),
             "timestamp": (lambda r: setattr(r.candidates.header.stamp, "nanosec", 999),
-                          "SuctionCandidateArray header does not match the approved Helios2 cloud"),
+                          "SuctionCandidateArray capture stamp does not match the approved Helios2 cloud"),
             "processing_time_nan": (lambda r: setattr(r.candidates, "processing_time_s", float("nan")),
                                     "Invalid processing_time_s"),
             "processing_time_negative": (lambda r: setattr(r.candidates, "processing_time_s", -1.0),

@@ -140,6 +140,11 @@ def _read_candidates(suction_result: Any, expected_scene_id: str,
     header = array.header
     if not isinstance(header.frame_id, str) or not header.frame_id.strip():
         raise ValueError("candidate array frame_id is empty")
+    if header.frame_id != "base_link":
+        raise ValueError(
+            f"candidate array must be upstream-transformed to base_link; "
+            f"received {header.frame_id!r}"
+        )
     stamp = header.stamp
     if (int(stamp.sec) < 0 or int(stamp.nanosec) < 0
             or int(stamp.nanosec) >= 1_000_000_000

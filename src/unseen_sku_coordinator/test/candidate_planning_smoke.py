@@ -23,10 +23,8 @@ from unseen_sku_coordinator.candidate.candidate_planning_coordinator import (
     CandidatePlanningCoordinator,
     CandidatePlanningStatus,
 )
-from unseen_sku_coordinator.motion.motion_coordinator import (
-    MotionCoordinator,
-    _rotate,
-)
+from unseen_sku_coordinator.motion.motion_coordinator import MotionCoordinator
+from unseen_sku_coordinator.motion.candidate_geometry import _rotate
 
 
 SCENE_ID = "candidate-planning-smoke"
@@ -40,7 +38,7 @@ def main():
     executor.add_node(node)
     tf_buffer = Buffer()
     listener = TransformListener(tf_buffer, node, spin_thread=False)
-    motion = MotionCoordinator(node, tf_buffer=tf_buffer)
+    motion = MotionCoordinator(node)
     candidate_planner = CandidatePlanningCoordinator(motion)
     try:
         print("Waiting for base_link <- vacuum_tcp ...", flush=True)

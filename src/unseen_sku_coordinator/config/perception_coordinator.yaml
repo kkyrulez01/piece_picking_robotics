@@ -37,7 +37,9 @@ perception_coordinator:
     # ==========================================
 
     suction_input_topic: "/coordinator/suction_input"
-    suction_result_topic: "/sim_suction/result"
+    # Only accept scene-correlated, upstream-transformed suction results.
+    suction_result_topic: "/sim_suction/result_base"
+    suction_result_frame: "base_link"
 
     # Keep disabled until SceneTransaction integration
     # and scoring-result validation are implemented.

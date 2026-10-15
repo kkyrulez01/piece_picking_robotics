@@ -612,6 +612,7 @@ class SceneTransaction:
             expected_scene_index=self.scene.sam2_scene_index,
             expected_cloud_stamp=self._selected_cloud.stamp,
             approved_object_ids=self._approved_suction_object_ids,
+            expected_candidate_frame=self.settings["suction_result_frame"],
         )
         if not validation.valid:
             if validation.internal_error:

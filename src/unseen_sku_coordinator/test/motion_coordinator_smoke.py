@@ -16,10 +16,8 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from std_msgs.msg import Header
 from unseen_sku_interfaces.msg import SuctionCandidate
 
-from unseen_sku_coordinator.motion.motion_coordinator import (
-    MotionCoordinator,
-    _rotate,
-)
+from unseen_sku_coordinator.motion.motion_coordinator import MotionCoordinator
+from unseen_sku_coordinator.motion.candidate_geometry import _rotate
 
 
 def main():
@@ -29,7 +27,7 @@ def main():
     executor.add_node(node)
     buffer = Buffer()
     listener = TransformListener(buffer, node, spin_thread=False)
-    motion = MotionCoordinator(node, tf_buffer=buffer)
+    motion = MotionCoordinator(node)
     try:
         print('Waiting for base_link <- vacuum_tcp ...', flush=True)
         tf = None

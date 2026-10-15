@@ -26,6 +26,7 @@ def validate_suction_result(
     expected_scene_index: int,
     expected_cloud_stamp: ObservationStamp,
     approved_object_ids,
+    expected_candidate_frame: str = "base_link",
 ) -> SuctionValidation:
     """Validate result metadata, status shape, and each ranked candidate.
 
@@ -46,21 +47,23 @@ def validate_suction_result(
             f"received={output.scene_index}",
         )
 
-    received_header = (
-        int(output.header.stamp.sec),
-        int(output.header.stamp.nanosec),
-        str(output.header.frame_id),
+    # Capture time and scene_index must still match the approved Helios cloud.
+    # The frame is *different* after upstream TF: it must be exactly base_link.
+    received_time = (
+        int(output.header.stamp.sec), int(output.header.stamp.nanosec),
     )
-    expected_header = (
-        int(expected_cloud_stamp.sec),
-        int(expected_cloud_stamp.nanosec),
-        str(expected_cloud_stamp.frame_id),
+    expected_time = (
+        int(expected_cloud_stamp.sec), int(expected_cloud_stamp.nanosec),
     )
-    if received_header != expected_header:
+    if received_time != expected_time:
         return SuctionValidation(
-            False,
-            "SuctionCandidateArray header does not match "
+            False, "SuctionCandidateArray capture stamp does not match "
             "the approved Helios2 cloud",
+        )
+    if str(output.header.frame_id) != expected_candidate_frame:
+        return SuctionValidation(
+            False, f"SuctionCandidateArray must be in {expected_candidate_frame}; "
+            f"received {output.header.frame_id!r}",
         )
 
     processing_time = float(output.processing_time_s)

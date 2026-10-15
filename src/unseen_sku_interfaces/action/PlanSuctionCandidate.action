@@ -1,0 +1,24 @@
+# Submit ONE suction candidate and its array header.
+# Input MUST be pre-transformed into base_link by the upstream candidate transform.
+# candidate_header.frame_id must equal base_link; no TF conversion occurs here.
+string scene_id
+std_msgs/Header candidate_header
+unseen_sku_interfaces/SuctionCandidate candidate
+---
+# Outcome of ONE candidate, including structured C++ planning failure details.
+# status matches MotionStatus.value; success only for a complete validated plan.
+bool success
+string status
+string detail
+string scene_id
+uint32 object_id
+uint32 rank
+bool retry_next_candidate
+uint8 failure_code
+string failed_stage
+int32 moveit_error_code
+geometry_msgs/PointStamped suction_point_base
+geometry_msgs/Vector3Stamped surface_normal_base
+unseen_sku_interfaces/PickPlan plan
+---
+string phase

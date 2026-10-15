@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(action_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -27,6 +29,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SuctionCandidate.msg"
   "msg/SuctionCandidateArray.msg"
 
+  # Planning-only action interfaces and shared results
+  "msg/PickPlan.msg"
+  "msg/CandidatePlanningAttempt.msg"
+  "action/PlanSuctionCandidate.action"
+  "action/PlanSuctionObject.action"
+
   # Perception Coordinator -> main Coordinator handoff
   "srv/StartPerceptionScene.srv"
   "srv/GetPerceptionSceneResult.srv"
@@ -35,6 +43,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
     std_msgs
     sensor_msgs
     geometry_msgs
+    trajectory_msgs
+    action_msgs
 )
 
 ament_export_dependencies(
