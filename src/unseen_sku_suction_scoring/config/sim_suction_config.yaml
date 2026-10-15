@@ -52,7 +52,7 @@ geometric_filters:
     enabled: true
     
     # CHANGE THIS to the actual suction cup radius
-    cup_radius_m: 0.010
+    cup_radius_m: 0.020
 
     grid_resolution_m: 0.002
     maximum_surface_deviation_m: 0.003
@@ -62,7 +62,7 @@ geometric_filters:
 
     # Approximate rigid tool/cup-body radius
     # Replace this with the real physical dimension
-    tool_radius_m: 0.010
+    tool_radius_m: 0.020
     # How far above the candidate to inspect
     approach_height_m: 0.060
     # Ignore geometry immediately around contact surface
@@ -90,4 +90,4 @@ output:
   visualize: false
 
   # For ROS2 node
-  save_debug: false
+  save_debug: true
