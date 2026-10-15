@@ -41,7 +41,7 @@ perception_coordinator:
 
     # Keep disabled until SceneTransaction integration
     # and scoring-result validation are implemented.
-    enable_suction_scoring: false
+    enable_suction_scoring: true
 
     # ==========================================
     # Timeouts
@@ -75,6 +75,10 @@ perception_coordinator:
 
     scene_test_start_service: "/perception_coordinator/start_scene_test"
     scene_test_status_service: "/perception_coordinator/scene_test_status"
+
+    # Typed services used by the future main coordinator and BT.
+    scene_start_service: "/perception_coordinator/start_scene"
+    scene_result_service: "/perception_coordinator/get_scene_result"
 
     # Timer used to advance the transaction state machine
     transaction_tick_period_sec: 0.05 # coordinator checks the transaction's progress approximately 20 times per second.

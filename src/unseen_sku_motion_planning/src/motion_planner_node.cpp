@@ -10,6 +10,18 @@
 #include "unseen_sku_motion_planning/motion_planner.hpp"
 #include "unseen_sku_motion_planning/srv/plan_candidate.hpp"
 
+// Keep the planner's C++ failure categories synchronized with the ROS schema.
+using PlanResponse = unseen_sku_motion_planning::srv::PlanCandidate::Response;
+using FailureCode = unseen_sku_motion_planning::CandidateFailureCode;
+static_assert(static_cast<int>(FailureCode::NONE) == PlanResponse::FAILURE_NONE);
+static_assert(static_cast<int>(FailureCode::INVALID_REQUEST) == PlanResponse::FAILURE_INVALID_REQUEST);
+static_assert(static_cast<int>(FailureCode::INVALID_CANDIDATE) == PlanResponse::FAILURE_INVALID_CANDIDATE);
+static_assert(static_cast<int>(FailureCode::CANDIDATE_INFEASIBLE) == PlanResponse::FAILURE_CANDIDATE_INFEASIBLE);
+static_assert(static_cast<int>(FailureCode::ROBOT_STATE_UNAVAILABLE) == PlanResponse::FAILURE_ROBOT_STATE_UNAVAILABLE);
+static_assert(static_cast<int>(FailureCode::PLANNING_FAILED_UNKNOWN) == PlanResponse::FAILURE_PLANNING_FAILED_UNKNOWN);
+static_assert(static_cast<int>(FailureCode::PLANNER_ERROR) == PlanResponse::FAILURE_PLANNER_ERROR);
+static_assert(static_cast<int>(FailureCode::INVALID_TRAJECTORY) == PlanResponse::FAILURE_INVALID_TRAJECTORY);
+
 namespace unseen_sku_motion_planning
 {
 
@@ -126,15 +138,22 @@ class MotionPlannerNode : public rclcpp::Node
       // Only one MoveIt planning request at a time.
       std::lock_guard<std::mutex> lock(planning_mutex_);
 
+      // Explicitly reset diagnostics for this service response.
+      response->failure_code = srv::PlanCandidate::Response::FAILURE_NONE;
+      response->failed_stage.clear();
+      response->moveit_error_code = 0;
+
       if (!motion_planner_)
       {
           response->success = false;
+          response->failure_code = srv::PlanCandidate::Response::FAILURE_PLANNER_ERROR;
+          response->failed_stage = "INITIALIZATION";
           response->message = "MotionPlanner is not initialized.";
           return;
       }
 
       CandidatePlan result;
-      std::string failure_reason;
+      CandidatePlanningFailure failure;
 
       RCLCPP_INFO(
           get_logger(),
@@ -150,13 +169,15 @@ class MotionPlannerNode : public rclcpp::Node
           pre_pick_distance_m_,
           retract_distance_m_,
           result,
-          failure_reason 
+          failure
         );
       }
 
       catch (const std::exception & error)
       {
         response->success = false;
+        response->failure_code = srv::PlanCandidate::Response::FAILURE_PLANNER_ERROR;
+        response->failed_stage = "EXCEPTION";
         response->message =
             std::string("Planning exception: ") + error.what();
 
@@ -171,13 +192,21 @@ class MotionPlannerNode : public rclcpp::Node
 
       if (!response->success)
       {
-          response->message = failure_reason.empty()
-              ? "Candidate planning failed."
-              : failure_reason;
+          const auto code = failure.code == CandidateFailureCode::NONE
+              ? CandidateFailureCode::PLANNER_ERROR : failure.code;
+          response->failure_code = static_cast<std::uint8_t>(code);
+          response->failed_stage = failure.stage;
+          response->moveit_error_code = failure.moveit_error_code;
+          response->message = failure.reason.empty()
+              ? "Candidate planning failed without diagnostics."
+              : failure.reason;
 
           RCLCPP_WARN(
               get_logger(),
-              "Candidate rejected: %s",
+              "Candidate planning failed: category=%u stage=%s moveit=%d reason=%s",
+              static_cast<unsigned>(response->failure_code),
+              response->failed_stage.c_str(),
+              response->moveit_error_code,
               response->message.c_str()
           );
 

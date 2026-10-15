@@ -1,0 +1,6 @@
+# Starts one new perception transaction. Empty request.
+---
+bool accepted
+# Populated only when accepted is true.
+string scene_id
+string reason

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -18,6 +19,28 @@ enum class MotionType
 {
   PTP,
   LIN
+};
+
+// Values intentionally mirror PlanCandidate.srv response constants.
+// Compile-time assertions in motion_planner_node.cpp detect contract drift.
+enum class CandidateFailureCode : std::uint8_t
+{
+  NONE = 0,
+  INVALID_REQUEST = 1,
+  INVALID_CANDIDATE = 2,
+  CANDIDATE_INFEASIBLE = 3,
+  ROBOT_STATE_UNAVAILABLE = 4,
+  PLANNING_FAILED_UNKNOWN = 5,
+  PLANNER_ERROR = 6,
+  INVALID_TRAJECTORY = 7,
+};
+
+struct CandidatePlanningFailure
+{
+  CandidateFailureCode code = CandidateFailureCode::NONE;
+  std::string stage;
+  std::string reason;
+  std::int32_t moveit_error_code = 0;  // Raw MoveItErrorCodes.val; 0 if not applicable.
 };
 
 struct CandidatePlan
@@ -122,7 +145,7 @@ class MotionPlanner {
       double pre_pick_distance_m,
       double retract_distance_m,
       CandidatePlan & output,
-      std::string & failure_reason
+      CandidatePlanningFailure & failure
     );
 
   private:

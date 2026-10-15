@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <moveit_msgs/msg/move_it_error_codes.hpp>
 
 #include <moveit/robot_state/conversions.h>
 #include <moveit/robot_state/robot_state.h>
@@ -427,15 +428,25 @@ bool MotionPlanner::plan_candidate(
   double pre_pick_distance_m,
   double retract_distance_m,
   CandidatePlan & output,
-  std::string & failure_reason
+  CandidatePlanningFailure & failure
 ) {
-    // Never return partially completed plans
+    // Never return partially completed plans or stale failure information.
     output = CandidatePlan();
-    failure_reason.clear();
+    failure = CandidatePlanningFailure();
+
+    auto fail = [&](CandidateFailureCode code, const std::string & stage,
+                    const std::string & reason, std::int32_t moveit_code = 0) -> bool
+    {
+      failure.code = code;
+      failure.stage = stage;
+      failure.reason = reason;
+      failure.moveit_error_code = moveit_code;
+      return false;
+    };
 
     if (!move_group_) {
-      failure_reason = "MotionPlanner is not initialized.";
-      return false;
+      return fail(CandidateFailureCode::PLANNER_ERROR, "INITIALIZATION",
+                  "MotionPlanner is not initialized.");
     }
 
     // 1. Validate coordinate frames
@@ -443,8 +454,8 @@ bool MotionPlanner::plan_candidate(
         suction_point.header.frame_id != base_frame_ ||
         surface_normal.header.frame_id != base_frame_
     ) {
-        failure_reason = "Both suction point and normal must be in " + base_frame_;
-        return false;
+        return fail(CandidateFailureCode::INVALID_REQUEST, "INPUT",
+                    "Both suction point and normal must be in " + base_frame_);
     }
 
     // 2. Validate input geometry
@@ -461,13 +472,13 @@ bool MotionPlanner::plan_candidate(
 
     if (!point.allFinite() || !normal.allFinite())
     {
-      failure_reason = "Candidate contains invalid XYZ or normal.";
-      return false;
+      return fail(CandidateFailureCode::INVALID_CANDIDATE, "INPUT",
+                  "Candidate contains invalid XYZ or normal.");
     }
 
     if (normal.norm() < 1e-6) {
-      failure_reason = "Surface normal has zero magnitude.";
-      return false;
+      return fail(CandidateFailureCode::INVALID_CANDIDATE, "INPUT",
+                  "Surface normal has zero magnitude.");
     }
 
     const Eigen::Vector3d unit_normal = normal.normalized();
@@ -554,8 +565,8 @@ bool MotionPlanner::plan_candidate(
     // Robot remains stationary during evaluation.
     auto initial_state = move_group_->getCurrentState(3.0);
     if (!initial_state) {
-      failure_reason = "Could not obtain current robot state.";
-      return false;
+      return fail(CandidateFailureCode::ROBOT_STATE_UNAVAILABLE, "ROBOT_STATE",
+                  "Could not obtain current robot state.");
     }
 
     // 6. Helper function to plan a single motion stage
@@ -579,8 +590,10 @@ bool MotionPlanner::plan_candidate(
 
         if (!move_group_->setPoseTarget(target, tcp_link_))
         {
-            failure_reason = stage + ": invalid TCP pose target.";
-            return false;
+            // setPoseTarget can fail for reasons beyond candidate geometry.
+            // Don't automatically retry another candidate on this ambiguous error.
+            return fail(CandidateFailureCode::PLANNING_FAILED_UNKNOWN, stage,
+                        stage + ": invalid TCP pose target.");
         }
 
         moveit::planning_interface::MoveGroupInterface::Plan plan;
@@ -591,8 +604,18 @@ bool MotionPlanner::plan_candidate(
 
         if (result != moveit::core::MoveItErrorCode::SUCCESS)
         {
-            failure_reason = stage + ": MoveIt planning failed.";
-            return false;
+            // Only these specific MoveIt results establish target-dependent
+            // infeasibility. Generic PLANNING_FAILED / TIMED_OUT may also be
+            // caused by backend or scene problems: fail closed on those.
+            using MoveItCodes = moveit_msgs::msg::MoveItErrorCodes;
+            const auto category =
+                (result.val == MoveItCodes::NO_IK_SOLUTION ||
+                 result.val == MoveItCodes::GOAL_IN_COLLISION)
+                    ? CandidateFailureCode::CANDIDATE_INFEASIBLE
+                    : CandidateFailureCode::PLANNING_FAILED_UNKNOWN;
+            return fail(category, stage,
+                        stage + ": MoveIt planning failed (error code " +
+                        std::to_string(result.val) + ").", result.val);
         }
 
         const auto & joint_trajectory =
@@ -600,8 +623,8 @@ bool MotionPlanner::plan_candidate(
 
         if (joint_trajectory.points.empty())
         {
-            failure_reason = stage + ": empty trajectory.";
-            return false;
+            return fail(CandidateFailureCode::INVALID_TRAJECTORY, stage,
+                        stage + ": empty trajectory.");
         }
 
         const auto & last_point =
@@ -609,8 +632,8 @@ bool MotionPlanner::plan_candidate(
 
         if (joint_trajectory.joint_names.size() != last_point.positions.size())
         {
-            failure_reason = stage + ": invalid trajectory dimensions.";
-            return false;
+            return fail(CandidateFailureCode::INVALID_TRAJECTORY, stage,
+                        stage + ": invalid trajectory dimensions.");
         }
 
         // These stages are planned as stop-to-stop motions.
@@ -621,8 +644,8 @@ bool MotionPlanner::plan_candidate(
                 if (!std::isfinite(velocity) ||
                     std::abs(velocity) > 1e-3)
                 {
-                    failure_reason = stage + ": final joint velocity is not zero.";
-                    return false;
+                    return fail(CandidateFailureCode::INVALID_TRAJECTORY, stage,
+                                stage + ": final joint velocity is not zero.");
                 }
             }
         }

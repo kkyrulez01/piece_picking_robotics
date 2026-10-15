@@ -1,0 +1,17 @@
+# Required scene ID returned by StartPerceptionScene.
+# Never substitute the latest scene when this ID does not match.
+string scene_id
+---
+# True only if this exact scene is still retained by the coordinator.
+bool found
+# True after this scene reaches a terminal state.
+bool finished
+# "running" or a ResultStatus value: success, failed, timeout, etc.
+string result_status
+# FailureCode value, e.g. "none", "scoring_timeout", "invalid_result".
+string failure_code
+string detail
+# Only true for a completed, successful, validated suction-scoring scene.
+bool has_validated_suction_result
+# Undefined/default-initialized unless has_validated_suction_result is true.
+SuctionResult suction_result

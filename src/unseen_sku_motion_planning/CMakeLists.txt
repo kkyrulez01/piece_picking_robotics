@@ -13,6 +13,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(moveit_core REQUIRED)
+find_package(moveit_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
@@ -38,6 +39,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   trajectory_msgs
+  moveit_msgs
   moveit_ros_planning_interface
 )
 
@@ -114,6 +116,7 @@ ament_target_dependencies(
   geometry_msgs
   trajectory_msgs
   moveit_core
+  moveit_msgs
   moveit_ros_planning_interface
 )
 
@@ -154,6 +157,7 @@ ament_export_dependencies(
   rclcpp
   geometry_msgs
   trajectory_msgs
+  moveit_msgs
   moveit_ros_planning_interface
   rosidl_default_runtime
 )

@@ -7,6 +7,24 @@ geometry_msgs/Vector3Stamped surface_normal
 bool success
 string message
 
+# Machine-readable result. FAILURE_NONE is valid only on success.
+# Only FAILURE_INVALID_CANDIDATE and FAILURE_CANDIDATE_INFEASIBLE
+# permit the candidate coordinator to try the next ranked suction point.
+uint8 FAILURE_NONE=0
+uint8 FAILURE_INVALID_REQUEST=1
+uint8 FAILURE_INVALID_CANDIDATE=2
+uint8 FAILURE_CANDIDATE_INFEASIBLE=3
+uint8 FAILURE_ROBOT_STATE_UNAVAILABLE=4
+uint8 FAILURE_PLANNING_FAILED_UNKNOWN=5
+uint8 FAILURE_PLANNER_ERROR=6
+uint8 FAILURE_INVALID_TRAJECTORY=7
+
+uint8 failure_code
+# INITIALIZATION, INPUT, ROBOT_STATE, PRE_PICK_PTP, PICK_LIN, RETRACT_LIN, EXCEPTION; empty on success.
+string failed_stage
+# Raw MoveItErrorCodes.val when plan() was called; 0 otherwise.
+int32 moveit_error_code
+
 geometry_msgs/PoseStamped pre_pick_pose
 geometry_msgs/PoseStamped pick_pose
 geometry_msgs/PoseStamped retract_pose

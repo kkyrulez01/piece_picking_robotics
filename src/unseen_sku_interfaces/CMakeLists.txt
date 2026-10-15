@@ -27,6 +27,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SuctionCandidate.msg"
   "msg/SuctionCandidateArray.msg"
 
+  # Perception Coordinator -> main Coordinator handoff
+  "srv/StartPerceptionScene.srv"
+  "srv/GetPerceptionSceneResult.srv"
+
   DEPENDENCIES
     std_msgs
     sensor_msgs

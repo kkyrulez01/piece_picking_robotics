@@ -12,6 +12,10 @@
   <depend>sensor_msgs</depend>
   <depend>realsense2_camera_msgs</depend>
   <depend>unseen_sku_interfaces</depend>
+  <depend>geometry_msgs</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>unseen_sku_motion_planning</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
