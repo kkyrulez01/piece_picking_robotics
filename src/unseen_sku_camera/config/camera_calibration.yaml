@@ -2,7 +2,7 @@ camera_calibration:
 
   # This must be the robot/world frame used when the
   # hand-eye calibration was performed.
-  robot_frame: "robot_base"
+  robot_frame: "base_link"
 
   helios2:
     frame_id: "helios2_optical_frame"
