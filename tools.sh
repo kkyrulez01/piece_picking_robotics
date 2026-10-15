@@ -109,3 +109,53 @@ scene_status() {
             '{}'
     )
 }
+
+# Connect to ARC S6 Robot
+connect_ARC() {
+    source /opt/ros/humble/setup.bash
+    source $ELITE_ROS_WS/install/setup.bash
+
+    local robot_ip="$1"
+    local local_ip="$2"
+
+    if [ -z "$robot_ip" ] || [ -z "$local_ip" ]; then
+        echo "Usage: connect_ARC <robot_ip> <local_ip>"
+        echo "Example: connect_ARC 192.168.1.200 192.168.1.100"
+        return 1
+    fi
+
+    ros2 launch eli_cs_robot_driver elite_control.launch.py \
+        robot_ip:=${robot_ip}\
+        local_ip:=${local_ip}\
+        headless_mode:=true \
+        launch_rviz:=false \
+        cs_type:=cs66
+}
+
+# Adjust ARC S6 robot speed
+arc_speed() {
+    source /opt/ros/humble/setup.bash
+    source $ELITE_ROS_WS/install/setup.bash
+
+    local speed="$1" # Stores the first positional argument
+
+    # -z checks if empty, output usage instructions if empty
+    if [ -z "$speed" ]; then 
+        echo "Usage: arc_speed <fraction>"
+        echo "Example: arc_speed 0.05"
+        return 1
+    fi
+
+    # Speed must be between 0.0 and 1.0
+    # ! awk: If condition is true (0), invert it to 1 to skip this error block
+    if ! awk -v s="$speed" 'BEGIN { exit !(s >= 0.0 && s <= 1.0) }'; then
+        echo "Error: speed must be between 0.0 and 1.0"
+        echo "Example: arc_speed 0.05 # 5%"
+        return 1
+    fi
+
+    ros2 service call \
+        /io_and_status_controller/set_speed_slider \
+        eli_common_interface/srv/SetSpeedSliderFraction \
+        "{speed_slider_fraction: ${speed}}"
+}
