@@ -9,10 +9,10 @@ from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from joint_conversion import (
-    arc_to_moma_position, 
-    moma_to_arc_position,
-    arc_to_moma_derivative,
-    moma_to_arc_derivative)
+    arc_to_moveit_position, 
+    moveit_to_arc_position,
+    arc_to_moveit_derivative,
+    moveit_to_arc_derivative)
 
 class JointConventionConverter(Node):
     def __init__(self):
@@ -20,10 +20,10 @@ class JointConventionConverter(Node):
 
         # Parameters
         self.declare_parameter("input_joint_states_topic", "/joint_states")
-        self.declare_parameter("output_joint_states_topic", "/moma/joint_states")
+        self.declare_parameter("output_joint_states_topic", "/unseen_sku/joint_states")
 
-        self.declare_parameter("input_trajectory_topic", "/moma/planned_joint_trajectory")
-        self.declare_parameter("output_trajectory_topic", "/moma/ARC_joint_trajectory")
+        self.declare_parameter("input_trajectory_topic", "/unseen_sku/planned_joint_trajectory")
+        self.declare_parameter("output_trajectory_topic", "/unseen_sku/arc_joint_trajectory")
 
         self.declare_parameter("arc_joint_names",
             [
@@ -35,7 +35,7 @@ class JointConventionConverter(Node):
                 "wrist_3_joint",
             ])
 
-        self.declare_parameter("moma_joint_names",
+        self.declare_parameter("moveit_joint_names",
             [
                 "Revolute_1",
                 "Revolute_2",
@@ -65,7 +65,7 @@ class JointConventionConverter(Node):
                 0.0
             ])
 
-        self.declare_parameter("wrap_moma_positions", True)
+        self.declare_parameter("wrap_moveit_positions", True)
 
         self.declare_parameter("max_state_age_sec", 0.5)
 
@@ -77,20 +77,20 @@ class JointConventionConverter(Node):
         self.output_trajectory_topic = self.get_parameter("output_trajectory_topic").value
 
         self.arc_joint_names = self.get_parameter("arc_joint_names").value
-        self.moma_joint_names = self.get_parameter("moma_joint_names").value
+        self.moveit_joint_names = self.get_parameter("moveit_joint_names").value
 
         self.signs = list(self.get_parameter("signs").value)
 
         self.offsets = list(self.get_parameter("offsets").value)
 
-        self.wrap_moma_positions = self.get_parameter("wrap_moma_positions").value
+        self.wrap_moveit_positions = self.get_parameter("wrap_moveit_positions").value
         self.max_state_age_sec = float(self.get_parameter("max_state_age_sec").value)
 
         # Validate configuration
         num_joints = len(self.arc_joint_names)
 
         if not (
-            len(self.moma_joint_names) == num_joints
+            len(self.moveit_joint_names) == num_joints
             and len(self.signs) == num_joints
             and len(self.offsets) == num_joints
         ):
@@ -111,8 +111,8 @@ class JointConventionConverter(Node):
         self.last_arc_state_rx_ns = None
 
         # ROS Publishers and Subscribers
-        # ARC -> MOMA
-        self.moma_joint_state_publisher = self.create_publisher(
+        # ARC -> moveit
+        self.moveit_joint_state_publisher = self.create_publisher(
             JointState,
             self.output_joint_states_topic,
             10
@@ -125,17 +125,17 @@ class JointConventionConverter(Node):
             10
         )
 
-        # MOMA -> ARC
+        # moveit -> ARC
         self.arc_trajectory_publisher = self.create_publisher(
             JointTrajectory,
             self.output_trajectory_topic,
             10
         )
 
-        self.moma_trajectory_subscription = self.create_subscription(
+        self.moveit_trajectory_subscription = self.create_subscription(
             JointTrajectory,
             self.input_trajectory_topic,
-            self.moma_trajectory_callback,
+            self.moveit_trajectory_callback,
             10
         )
 
@@ -148,13 +148,13 @@ class JointConventionConverter(Node):
         )
 
         self.get_logger().info(
-            "ARC -> MOMA joint states: "
+            "ARC -> moveit joint states: "
             f"{self.input_joint_states_topic} "
             f"-> {self.output_joint_states_topic}"
         )
 
         self.get_logger().info(
-            "MOMA -> ARC trajectory: "
+            "moveit -> ARC trajectory: "
             f"{self.input_trajectory_topic} "
             f"-> {self.output_trajectory_topic}"
         )
@@ -162,8 +162,8 @@ class JointConventionConverter(Node):
         for i in range(num_joints):
             self.get_logger().info(
                 f"{self.arc_joint_names[i]} "
-                f"<-> {self.moma_joint_names[i]}: "
-                f"MOMA = "
+                f"<-> {self.moveit_joint_names[i]}: "
+                f"moveit = "
                 f"{self.signs[i]:+.1f} * ARC "
                 f"+ {self.offsets[i]:+.6f}"
             )
@@ -197,7 +197,7 @@ class JointConventionConverter(Node):
         return age_sec <= self.max_state_age_sec
     
     # =========================================================
-    # ARC -> MOMA joint-state conversion
+    # ARC -> moveit joint-state conversion
     # =========================================================
     def arc_joint_state_callback(self, msg: JointState):
 
@@ -216,7 +216,7 @@ class JointConventionConverter(Node):
         output = JointState()
 
         output.header = msg.header
-        output.name = list(self.moma_joint_names)
+        output.name = list(self.moveit_joint_names)
 
         output.position = []
         output.velocity = []
@@ -237,37 +237,37 @@ class JointConventionConverter(Node):
             # Stores actual unwrapped ARC position
             self.current_arc_positions[arc_name] = arc_position
 
-            # Calculate ARC -> MOMA position
-            moma_position = arc_to_moma_position(
+            # Calculate ARC -> moveit position
+            moveit_position = arc_to_moveit_position(
                 arc_position=arc_position,
                 sign=sign,
                 offset=offset,
-                wrap=self.wrap_moma_positions
+                wrap=self.wrap_moveit_positions
             )
 
-            output.position.append(moma_position)
+            output.position.append(moveit_position)
 
             # Velocity
-            output.velocity.append(arc_to_moma_derivative(
+            output.velocity.append(arc_to_moveit_derivative(
                 value=msg.velocity[input_index],
                 sign=sign
             ))
 
             # Effort
-            output.effort.append(arc_to_moma_derivative(
+            output.effort.append(arc_to_moveit_derivative(
                 value=msg.effort[input_index],
                 sign=sign
             ))
 
         self.last_arc_state_rx_ns = self.get_clock().now().nanoseconds
 
-        # Publish converted joint states to MOMA/MoveIt
-        self.moma_joint_state_publisher.publish(output) 
+        # Publish converted joint states to moveit/MoveIt
+        self.moveit_joint_state_publisher.publish(output) 
 
     # =========================================================
-    # MOMA -> ARC trajectory conversion
+    # moveit -> ARC trajectory conversion
     # =========================================================
-    def moma_trajectory_callback(self, msg: JointTrajectory):
+    def moveit_trajectory_callback(self, msg: JointTrajectory):
         if not self.arc_state_is_ready():
             self.get_logger().error(
                 "Trajectory rejected: current ARC joint state is unavailable."
@@ -285,7 +285,7 @@ class JointConventionConverter(Node):
 
         if len(msg.points) == 0:
             self.get_logger().warning(
-                "Received empty MOMA trajectory."
+                "Received empty moveit trajectory."
             )
 
             return
@@ -304,14 +304,14 @@ class JointConventionConverter(Node):
 
             return
 
-        # Find MOMA joint indices from Joint Trajectory message from MoveIt
-        moma_indices = {name: index for index, name in enumerate(msg.joint_names)}
+        # Find moveit joint indices from Joint Trajectory message from MoveIt
+        moveit_indices = {name: index for index, name in enumerate(msg.joint_names)}
 
-        missing_joints = [name for name in self.moma_joint_names if name not in moma_indices]
+        missing_joints = [name for name in self.moveit_joint_names if name not in moveit_indices]
 
         if missing_joints:
             self.get_logger().error(
-                "Trajectory rejected. Missing MOMA joints: "
+                "Trajectory rejected. Missing moveit joints: "
                 + ", ".join(missing_joints)
             )
             return
@@ -330,10 +330,10 @@ class JointConventionConverter(Node):
         # -----------------------------------------------------
 
         # For each waypoint in MoveIt Trajectory
-        for point_index, moma_point in enumerate(msg.points):
+        for point_index, moveit_point in enumerate(msg.points):
             num_input_joints = len(msg.joint_names)
 
-            if len(moma_point.positions) != num_input_joints:
+            if len(moveit_point.positions) != num_input_joints:
 
                 self.get_logger().error(
                     "Trajectory rejected: "
@@ -344,9 +344,9 @@ class JointConventionConverter(Node):
                 return
 
             # Velocity, acceleration and effort are sometimes optional
-            has_velocity = len(moma_point.velocities) > 0
-            has_acceleration = len(moma_point.accelerations) > 0
-            has_effort = len(moma_point.effort) > 0
+            has_velocity = len(moveit_point.velocities) > 0
+            has_acceleration = len(moveit_point.accelerations) > 0
+            has_effort = len(moveit_point.effort) > 0
 
             arc_point = JointTrajectoryPoint()
 
@@ -359,17 +359,17 @@ class JointConventionConverter(Node):
                 arc_point.effort = []
 
             # Conversion for each joint
-            for i, moma_name in enumerate(self.moma_joint_names):
-                input_index = moma_indices[moma_name]
+            for i, moveit_name in enumerate(self.moveit_joint_names):
+                input_index = moveit_indices[moveit_name]
 
                 sign = self.signs[i]
                 offset = self.offsets[i]
 
                 # Position
-                moma_position = moma_point.positions[input_index]
+                moveit_position = moveit_point.positions[input_index]
 
-                arc_position = moma_to_arc_position(
-                    moma_position=moma_position,
+                arc_position = moveit_to_arc_position(
+                    moveit_position=moveit_position,
                     sign=sign,
                     offset=offset,
                     reference=(reference_positions[i])
@@ -379,26 +379,26 @@ class JointConventionConverter(Node):
 
                 # Velocity
                 if has_velocity:
-                    arc_point.velocities.append(moma_to_arc_derivative(
-                        value=moma_point.velocities[input_index],
+                    arc_point.velocities.append(moveit_to_arc_derivative(
+                        value=moveit_point.velocities[input_index],
                         sign=sign
                     ))
 
                 # Acceleration
                 if has_acceleration:
-                    arc_point.accelerations.append(moma_to_arc_derivative(
-                        value=moma_point.accelerations[input_index],
+                    arc_point.accelerations.append(moveit_to_arc_derivative(
+                        value=moveit_point.accelerations[input_index],
                         sign=sign
                     ))
 
                 # Effort
                 if has_effort:
-                    arc_point.effort.append(moma_to_arc_derivative(
-                        value=moma_point.effort[input_index],
+                    arc_point.effort.append(moveit_to_arc_derivative(
+                        value=moveit_point.effort[input_index],
                         sign=sign
                     ))
 
-            arc_point.time_from_start = moma_point.time_from_start
+            arc_point.time_from_start = moveit_point.time_from_start
 
             arc_trajectory.points.append(arc_point)
 
@@ -407,7 +407,7 @@ class JointConventionConverter(Node):
 
         self.arc_trajectory_publisher.publish(arc_trajectory)
         self.get_logger().info(
-            "Converted MOMA trajectory -> ARC: "
+            "Converted moveit trajectory -> ARC: "
             f"{len(arc_trajectory.points)} points."
         )
 

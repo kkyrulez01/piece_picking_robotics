@@ -56,7 +56,7 @@ class SuctionNode(Node):
 
         # Locate the installed configuration through ROS 2.
         package_share = Path(
-            get_package_share_directory("suction_scoring")
+            get_package_share_directory("unseen_sku_suction_scoring")
         )
 
         default_config_path = (

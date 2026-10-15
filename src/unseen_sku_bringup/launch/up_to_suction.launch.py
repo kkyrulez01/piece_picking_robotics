@@ -52,6 +52,8 @@ def generate_launch_description():
         name="helios2_node",
         output="screen",
 
+        prefix=LaunchConfiguration("helios_python"),
+
         parameters=[{
             "config_path": helios_config,
         }],
@@ -90,6 +92,12 @@ def generate_launch_description():
 
         parameters=[
             fusion_config,
+            {
+                "input_mode": ParameterValue(
+                    LaunchConfiguration("fusion_input_mode"),
+                    value_type=str,
+                ),
+            },
         ],
     )
 
@@ -105,6 +113,10 @@ def generate_launch_description():
 
         parameters=[{
             "config_path": suction_config,
+            "input_mode": ParameterValue(
+                LaunchConfiguration("suction_input_mode"),
+                value_type=str,
+            ),
         }],
     )
 
@@ -130,6 +142,17 @@ def generate_launch_description():
             ])
         ),
         DeclareLaunchArgument(
+            "helios_python",
+            default_value=PathJoinSubstitution([
+                EnvironmentVariable("HOME"),
+                "unseen_sku_ws",
+                "venv",
+                "sam2",
+                "bin",
+                "python",
+            ]),
+        ),
+        DeclareLaunchArgument(
             "sam2_config",
             default_value=PathJoinSubstitution([
                 perception_share,
@@ -144,6 +167,16 @@ def generate_launch_description():
                 "config",
                 "mask_fusion.yaml",
             ])
+        ),
+        DeclareLaunchArgument(
+            "fusion_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
+        ),
+        DeclareLaunchArgument(
+            "suction_input_mode",
+            default_value="standalone",
+            choices=["standalone", "controlled"],
         ),
         DeclareLaunchArgument(
             "initial_scene_index",

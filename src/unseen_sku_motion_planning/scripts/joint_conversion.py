@@ -25,40 +25,40 @@ def nearest_equivalent_angle(angle: float, reference: float) -> float:
 
     return final_angle
 
-def arc_to_moma_position(
+def arc_to_moveit_position(
     arc_position: float,
     sign: float,
     offset: float,
     wrap: bool = True,
 ) -> float:
     """
-    MOMA = sign * ARC + offset
+    moveit = sign * ARC + offset
     """
 
-    moma_position = sign * arc_position + offset
+    moveit_position = sign * arc_position + offset
 
     if wrap:
-        moma_position = wrap_to_pi(moma_position)
+        moveit_position = wrap_to_pi(moveit_position)
 
-    return moma_position
+    return moveit_position
 
-def moma_to_arc_position(
-    moma_position: float,
+def moveit_to_arc_position(
+    moveit_position: float,
     sign: float,
     offset: float,
     reference: float
 ) -> float:
     """
-    ARC = (MOMA - offset) / sign
+    ARC = (moveit - offset) / sign
 
     Then choose the +/- 2*pi equivalent nearest to the current/previous ARC
     position.
     """
-    raw_arc_position = (moma_position - offset) / sign
+    raw_arc_position = (moveit_position - offset) / sign
 
     return nearest_equivalent_angle(raw_arc_position, reference)
 
-def arc_to_moma_derivative(value: float, sign: float) -> float:
+def arc_to_moveit_derivative(value: float, sign: float) -> float:
     """
     Conversion for velocity / acceleration.
 
@@ -66,5 +66,5 @@ def arc_to_moma_derivative(value: float, sign: float) -> float:
     """
     return sign * value
 
-def moma_to_arc_derivative(value: float, sign: float) -> float:
+def moveit_to_arc_derivative(value: float, sign: float) -> float:
     return value / sign

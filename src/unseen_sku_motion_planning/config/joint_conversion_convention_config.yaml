@@ -8,7 +8,7 @@ joint_convention_converter:
 
     # unseen_sku -> ARC
     input_trajectory_topic: /unseen_sku/planned_joint_trajectory
-    output_trajectory_topic: /unseen_sku/ARC_joint_trajectory
+    output_trajectory_topic: /unseen_sku/arc_joint_trajectory
 
     # ARC robot joint names
     arc_joint_names:
@@ -20,7 +20,7 @@ joint_convention_converter:
       - wrist_3_joint
     
     # Corresponding unseen_sku / MoveIt joint names
-    unseen_sku_joint_names:
+    moveit_joint_names:
       - Revolute_1
       - Revolute_2
       - Revolute_3
@@ -53,6 +53,6 @@ joint_convention_converter:
       - 0.0
       - 0.0
     
-    wrap_unseen_sku_positions: true
+    wrap_moveit_positions: true
 
     max_state_age_sec: 0.5
